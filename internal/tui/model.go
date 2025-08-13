@@ -4,6 +4,7 @@ import (
 	"bubblecal/internal/config"
 	"bubblecal/internal/model"
 	"bubblecal/internal/storage"
+	"fmt"
 	"time"
 
 	tea "github.com/charmbracelet/bubbletea"
@@ -284,9 +285,11 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					case ListView:
 						m.listView.GoToTop()
 					case WeekView:
-						m.selectedHour = 8 // First hour in week view
+						// Set to earliest event hour or default
+						m.selectedHour = m.getEarliestHourForWeek()
 					case DayView:
-						m.selectedHour = 6 // First hour in day view
+						// Set to earliest event hour or default
+						m.selectedHour = m.getEarliestHourForDay()
 					}
 				} else {
 					// Agenda pane
@@ -432,9 +435,11 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				case ListView:
 					m.listView.GoToBottom()
 				case WeekView:
-					m.selectedHour = 20 // Last hour in week view
+					// Set to latest event hour or default
+					m.selectedHour = m.getLatestHourForWeek()
 				case DayView:
-					m.selectedHour = 22 // Last hour in day view
+					// Set to latest event hour or default
+					m.selectedHour = m.getLatestHourForDay()
 				}
 			} else {
 				// Agenda pane
@@ -486,12 +491,14 @@ func (m *Model) handleCalendarNavigation(msg tea.KeyMsg) tea.Cmd {
 			m.selectedDate = m.selectedDate.AddDate(0, 0, 7)
 		} else if m.currentView == WeekView {
 			// Move down one hour in week view
-			if m.selectedHour < 20 { // Max hour is 20:00
+			maxHour := m.getLatestHourForWeek()
+			if m.selectedHour < maxHour {
 				m.selectedHour++
 			}
 		} else if m.currentView == DayView {
 			// Move down one hour in day view
-			if m.selectedHour < 22 { // Day view goes to 22:00
+			maxHour := m.getLatestHourForDay()
+			if m.selectedHour < maxHour {
 				m.selectedHour++
 			}
 		} else if m.currentView == ListView {
@@ -503,12 +510,14 @@ func (m *Model) handleCalendarNavigation(msg tea.KeyMsg) tea.Cmd {
 			m.selectedDate = m.selectedDate.AddDate(0, 0, -7)
 		} else if m.currentView == WeekView {
 			// Move up one hour in week view
-			if m.selectedHour > 8 { // Min hour is 8:00
+			minHour := m.getEarliestHourForWeek()
+			if m.selectedHour > minHour {
 				m.selectedHour--
 			}
 		} else if m.currentView == DayView {
 			// Move up one hour in day view
-			if m.selectedHour > 6 { // Day view starts at 6:00
+			minHour := m.getEarliestHourForDay()
+			if m.selectedHour > minHour {
 				m.selectedHour--
 			}
 		} else if m.currentView == ListView {
@@ -988,4 +997,100 @@ func (m *Model) generateListJumpTargets() {
 	}
 	// Pass jump keys to list view
 	m.listView.SetJumpMode(true, m.jumpKeys)
+}
+
+// Helper functions for dynamic hour ranges
+
+func (m *Model) getEarliestHourForDay() int {
+	events, _ := storage.LoadDayEvents(m.selectedDate)
+	minHour := 6 // Default
+	
+	for _, evt := range events {
+		if !evt.IsAllDay() && evt.StartTime != "" {
+			var hour int
+			if _, err := fmt.Sscanf(evt.StartTime, "%d:", &hour); err == nil {
+				if hour < minHour {
+					minHour = hour
+				}
+			}
+		}
+	}
+	
+	if minHour < 0 {
+		minHour = 0
+	}
+	return minHour
+}
+
+func (m *Model) getLatestHourForDay() int {
+	events, _ := storage.LoadDayEvents(m.selectedDate)
+	maxHour := 22 // Default
+	
+	for _, evt := range events {
+		if !evt.IsAllDay() && evt.StartTime != "" {
+			var hour int
+			if _, err := fmt.Sscanf(evt.StartTime, "%d:", &hour); err == nil {
+				if hour > maxHour {
+					maxHour = hour
+				}
+			}
+		}
+	}
+	
+	if maxHour > 23 {
+		maxHour = 23
+	}
+	return maxHour
+}
+
+func (m *Model) getEarliestHourForWeek() int {
+	weekStart := m.getStartOfWeek(m.selectedDate)
+	minHour := 8 // Default
+	
+	for d := 0; d < 7; d++ {
+		date := weekStart.AddDate(0, 0, d)
+		events, _ := storage.LoadDayEvents(date)
+		
+		for _, evt := range events {
+			if !evt.IsAllDay() && evt.StartTime != "" {
+				var hour int
+				if _, err := fmt.Sscanf(evt.StartTime, "%d:", &hour); err == nil {
+					if hour < minHour {
+						minHour = hour
+					}
+				}
+			}
+		}
+	}
+	
+	if minHour < 0 {
+		minHour = 0
+	}
+	return minHour
+}
+
+func (m *Model) getLatestHourForWeek() int {
+	weekStart := m.getStartOfWeek(m.selectedDate)
+	maxHour := 20 // Default
+	
+	for d := 0; d < 7; d++ {
+		date := weekStart.AddDate(0, 0, d)
+		events, _ := storage.LoadDayEvents(date)
+		
+		for _, evt := range events {
+			if !evt.IsAllDay() && evt.StartTime != "" {
+				var hour int
+				if _, err := fmt.Sscanf(evt.StartTime, "%d:", &hour); err == nil {
+					if hour > maxHour {
+						maxHour = hour
+					}
+				}
+			}
+		}
+	}
+	
+	if maxHour > 23 {
+		maxHour = 23
+	}
+	return maxHour
 }

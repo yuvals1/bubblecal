@@ -103,9 +103,28 @@ func (d *DayViewModel) View() string {
 		lines = append(lines, strings.Repeat("─", d.width-4))
 	}
 	
-	// Hour rows (6:00 - 22:00)
-	startHour := 6
-	endHour := 22
+	// Calculate dynamic hour range based on events
+	startHour := 6  // Default minimum
+	endHour := 22   // Default maximum
+	
+	// Check if any events fall outside the default range
+	for hour := range hourEvents {
+		if hour < startHour {
+			startHour = hour
+		}
+		if hour > endHour {
+			endHour = hour
+		}
+	}
+	
+	// Ensure we don't go beyond reasonable bounds
+	if startHour < 0 {
+		startHour = 0
+	}
+	if endHour > 23 {
+		endHour = 23
+	}
+	
 	currentHour := time.Now().Hour()
 	isToday := sameDay(date, time.Now())
 	
