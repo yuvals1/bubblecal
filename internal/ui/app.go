@@ -13,7 +13,6 @@ type App struct {
     pages      *tview.Pages
     center     *tview.Pages
 	header     *tview.TextView
-	status     *tview.TextView
 
 	monthView  *MonthView
     weekView   *WeekView
@@ -47,7 +46,6 @@ func NewApp() (*App, error) {
 	application := tview.NewApplication()
 
 	header := buildHeader()
-	status := buildStatusBar()
 
 	uiState := &UIState{
 		SelectedDate: time.Now(),
@@ -73,8 +71,7 @@ func NewApp() (*App, error) {
 
 	root := tview.NewFlex().SetDirection(tview.FlexRow).
 		AddItem(header, 1, 0, false).
-		AddItem(pages, 0, 1, true).
-		AddItem(status, 1, 0, false)
+        AddItem(pages, 0, 1, true)
 
     app := &App{
 		app:        application,
@@ -82,7 +79,6 @@ func NewApp() (*App, error) {
 		pages:      pages,
         center:     centerPages,
 		header:     header,
-		status:     status,
 		monthView:  monthView,
         weekView:   weekView,
         // keep agenda reference; week view is swapped via centerPages
@@ -187,7 +183,6 @@ func (a *App) bindKeys() {
 
 func (a *App) refreshAll() {
     a.header.SetText(renderHeader(a.uiState.SelectedDate))
-    a.status.SetText(renderStatus(time.Now(), a.uiState.SelectedDate))
     a.monthView.Refresh()
     if a.weekView != nil {
         a.weekView.Refresh()
