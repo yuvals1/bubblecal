@@ -12,15 +12,17 @@ import (
 // DayViewModel represents the day view
 type DayViewModel struct {
 	selectedDate *time.Time
+	selectedHour *int
 	styles       *Styles
 	width        int
 	height       int
 }
 
 // NewDayViewModel creates a new day view model
-func NewDayViewModel(selectedDate *time.Time, styles *Styles) *DayViewModel {
+func NewDayViewModel(selectedDate *time.Time, selectedHour *int, styles *Styles) *DayViewModel {
 	return &DayViewModel{
 		selectedDate: selectedDate,
+		selectedHour: selectedHour,
 		styles:       styles,
 	}
 }
@@ -38,13 +40,17 @@ func (d *DayViewModel) View() string {
 	date := *d.selectedDate
 	var lines []string
 	
-	// Date header
+	// Date header with today indicator
+	headerText := date.Format("Monday, January 2, 2006")
+	if sameDay(date, time.Now()) {
+		headerText += lipgloss.NewStyle().Foreground(lipgloss.Color("196")).Render(" • Today")
+	}
 	dateHeader := lipgloss.NewStyle().
 		Width(d.width - 4).
 		Align(lipgloss.Center).
 		Bold(true).
 		Foreground(lipgloss.Color("15")).
-		Render(date.Format("Monday, January 2, 2006"))
+		Render(headerText)
 	lines = append(lines, dateHeader)
 	lines = append(lines, strings.Repeat("─", d.width-4))
 	
@@ -85,10 +91,11 @@ func (d *DayViewModel) View() string {
 		
 		allDayContent := lipgloss.NewStyle().
 			Foreground(d.styles.EventBadge.GetForeground()).
+			Width(d.width - 14).
 			Render(strings.Join(allDayEvents, " | "))
 		
 		lines = append(lines, lipgloss.JoinHorizontal(lipgloss.Top, allDayLabel, allDayContent))
-		lines = append(lines, "")
+		lines = append(lines, strings.Repeat("─", d.width-4))
 	}
 	
 	// Hour rows (6:00 - 22:00)
@@ -97,7 +104,25 @@ func (d *DayViewModel) View() string {
 	currentHour := time.Now().Hour()
 	isToday := sameDay(date, time.Now())
 	
-	for h := startHour; h <= endHour; h++ {
+	// Calculate visible hours to fit screen
+	availableHeight := d.height - len(lines) - 2
+	hoursToShow := endHour - startHour + 1
+	if availableHeight < hoursToShow {
+		// Adjust range to show around current time if today
+		if isToday {
+			startHour = currentHour - availableHeight/2
+			if startHour < 6 {
+				startHour = 6
+			}
+			endHour = startHour + availableHeight - 1
+			if endHour > 22 {
+				endHour = 22
+				startHour = endHour - availableHeight + 1
+			}
+		}
+	}
+	
+	for h := startHour; h <= endHour && len(lines) < d.height-2; h++ {
 		hourStyle := lipgloss.NewStyle().
 			Width(10).
 			Align(lipgloss.Right).
@@ -105,12 +130,20 @@ func (d *DayViewModel) View() string {
 		
 		eventStyle := lipgloss.NewStyle()
 		
-		// Highlight current hour if today
-		if isToday && h == currentHour {
+		// Highlight selected hour
+		if h == *d.selectedHour {
+			hourStyle = hourStyle.
+				Background(d.styles.SelectedDate.GetBackground()).
+				Foreground(d.styles.SelectedDate.GetForeground()).
+				Bold(true)
+			eventStyle = eventStyle.
+				Background(d.styles.SelectedDate.GetBackground()).
+				Foreground(d.styles.SelectedDate.GetForeground())
+		} else if isToday && h == currentHour {
+			// Show current hour if today (but not selected)
 			hourStyle = hourStyle.
 				Background(d.styles.TodayDate.GetBackground()).
-				Foreground(d.styles.TodayDate.GetForeground()).
-				Bold(true)
+				Foreground(d.styles.TodayDate.GetForeground())
 			eventStyle = eventStyle.
 				Background(d.styles.TodayDate.GetBackground()).
 				Foreground(d.styles.TodayDate.GetForeground())
@@ -121,6 +154,11 @@ func (d *DayViewModel) View() string {
 		eventsText := ""
 		if events, ok := hourEvents[h]; ok {
 			eventsText = strings.Join(events, " | ")
+			// Truncate if too long
+			maxLen := d.width - 14
+			if len(eventsText) > maxLen {
+				eventsText = eventsText[:maxLen-1] + "…"
+			}
 		}
 		
 		eventContent := eventStyle.
@@ -131,4 +169,12 @@ func (d *DayViewModel) View() string {
 	}
 	
 	return lipgloss.JoinVertical(lipgloss.Left, lines...)
+}
+
+// GetSelectedHour returns the currently selected hour as a formatted string
+func (d *DayViewModel) GetSelectedHour() string {
+	if *d.selectedHour >= 6 && *d.selectedHour <= 22 {
+		return fmt.Sprintf("%02d:00", *d.selectedHour)
+	}
+	return ""
 }

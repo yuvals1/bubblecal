@@ -12,15 +12,17 @@ import (
 // WeekViewModel represents the week view
 type WeekViewModel struct {
 	selectedDate *time.Time
+	selectedHour *int
 	styles       *Styles
 	width        int
 	height       int
 }
 
 // NewWeekViewModel creates a new week view model
-func NewWeekViewModel(selectedDate *time.Time, styles *Styles) *WeekViewModel {
+func NewWeekViewModel(selectedDate *time.Time, selectedHour *int, styles *Styles) *WeekViewModel {
 	return &WeekViewModel{
 		selectedDate: selectedDate,
+		selectedHour: selectedHour,
 		styles:       styles,
 	}
 }
@@ -40,16 +42,22 @@ func (w *WeekViewModel) View() string {
 	
 	var lines []string
 	
+	// Calculate column width
+	colWidth := (w.width - 10) / 7 // -10 for hour column
+	if colWidth < 10 {
+		colWidth = 10
+	}
+	
 	// Header with days
 	var headerCells []string
-	headerCells = append(headerCells, lipgloss.NewStyle().Width(8).Render(""))
+	headerCells = append(headerCells, lipgloss.NewStyle().Width(8).Align(lipgloss.Right).Render(""))
 	
 	for d := 0; d < 7; d++ {
 		date := weekStart.AddDate(0, 0, d)
 		label := fmt.Sprintf("%s %d", date.Weekday().String()[:3], date.Day())
 		
 		style := lipgloss.NewStyle().
-			Width(12).
+			Width(colWidth).
 			Align(lipgloss.Center).
 			Bold(true)
 		
@@ -57,7 +65,7 @@ func (w *WeekViewModel) View() string {
 			style = style.
 				Background(w.styles.TodayDate.GetBackground()).
 				Foreground(w.styles.TodayDate.GetForeground())
-			label += " T"
+			label += lipgloss.NewStyle().Foreground(lipgloss.Color("196")).Render(" T")
 		}
 		
 		headerCells = append(headerCells, style.Render(label))
@@ -86,18 +94,21 @@ func (w *WeekViewModel) View() string {
 			cellContent := w.getHourEvents(date, h)
 			
 			cellStyle := lipgloss.NewStyle().
-				Width(12).
+				Width(colWidth).
 				Height(1).
 				Padding(0, 1)
 			
+			// Subtle background for today's column
 			if sameDay(date, time.Now()) {
 				cellStyle = cellStyle.Background(lipgloss.Color("234"))
 			}
 			
-			if sameDay(date, *w.selectedDate) && h == 12 {
+			// Highlight selected cell (selected date + selected hour)
+			if sameDay(date, *w.selectedDate) && h == *w.selectedHour {
 				cellStyle = cellStyle.
 					Background(w.styles.SelectedDate.GetBackground()).
-					Foreground(w.styles.SelectedDate.GetForeground())
+					Foreground(w.styles.SelectedDate.GetForeground()).
+					Bold(true)
 			}
 			
 			rowCells = append(rowCells, cellStyle.Render(cellContent))
@@ -113,10 +124,17 @@ func (w *WeekViewModel) View() string {
 	return lipgloss.JoinVertical(lipgloss.Left, lines...)
 }
 
+// GetSelectedHour returns the currently selected hour as a formatted string
+func (w *WeekViewModel) GetSelectedHour() string {
+	if *w.selectedHour >= 8 && *w.selectedHour <= 20 {
+		return fmt.Sprintf("%02d:00", *w.selectedHour)
+	}
+	return ""  
+}
+
 func (w *WeekViewModel) getHourEvents(date time.Time, hour int) string {
 	events, _ := storage.LoadDayEvents(date)
 	
-	var hourEvents []string
 	for _, evt := range events {
 		if evt.IsAllDay() {
 			continue
@@ -125,16 +143,16 @@ func (w *WeekViewModel) getHourEvents(date time.Time, hour int) string {
 		// Check if event starts at this hour
 		if strings.HasPrefix(evt.StartTime, fmt.Sprintf("%02d:", hour)) {
 			title := evt.Title
-			if len(title) > 10 {
-				title = title[:9] + "…"
+			// Calculate max length based on column width
+			colWidth := (w.width - 10) / 7
+			maxLen := colWidth - 4 // Account for padding and bullet
+			if len(title) > maxLen && maxLen > 3 {
+				title = title[:maxLen-1] + "…"
 			}
-			hourEvents = append(hourEvents, w.styles.EventBadge.Render("●")+" "+title)
+			return w.styles.EventBadge.Render("●") + " " + title
 		}
 	}
 	
-	if len(hourEvents) > 0 {
-		return hourEvents[0] // Show first event only due to space
-	}
 	return ""
 }
 

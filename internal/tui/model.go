@@ -32,6 +32,7 @@ type Model struct {
 	selectedDate time.Time
 	currentView  ViewMode
 	focusedPane  FocusedPane
+	selectedHour int // Selected hour for week/day views
 	
 	// Data
 	events       []*model.Event // Events for selected date
@@ -83,13 +84,14 @@ func NewModel() *Model {
 		selectedDate: now,
 		currentView:  MonthView,
 		focusedPane:  CalendarPane,
+		selectedHour: 12, // Default to noon
 		styles:       DefaultStyles(),
 	}
 	
 	// Initialize views
 	m.monthView = NewMonthViewModel(&m.selectedDate, m.styles)
-	m.weekView = NewWeekViewModel(&m.selectedDate, m.styles)
-	m.dayView = NewDayViewModel(&m.selectedDate, m.styles)
+	m.weekView = NewWeekViewModel(&m.selectedDate, &m.selectedHour, m.styles)
+	m.dayView = NewDayViewModel(&m.selectedDate, &m.selectedHour, m.styles)
 	m.agendaView = NewAgendaViewModel(&m.selectedDate, m.styles)
 	
 	// Load initial events
@@ -162,8 +164,25 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			switch m.currentView {
 			case MonthView:
 				m.currentView = WeekView
+				// Set selected hour to current hour if today, otherwise noon
+				if sameDay(m.selectedDate, time.Now()) {
+					hour := time.Now().Hour()
+					if hour >= 8 && hour <= 20 {
+						m.selectedHour = hour
+					} else {
+						m.selectedHour = 12
+					}
+				} else {
+					m.selectedHour = 12
+				}
 			case WeekView:
 				m.currentView = DayView
+				// Adjust selected hour for day view range if needed
+				if m.selectedHour < 6 {
+					m.selectedHour = 6
+				} else if m.selectedHour > 22 {
+					m.selectedHour = 22
+				}
 			case DayView:
 				m.currentView = MonthView
 			}
@@ -171,12 +190,42 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case "t", ".":
 			// Go to today
 			m.selectedDate = time.Now()
+			// Also set to current hour in week/day views
+			if m.currentView == WeekView {
+				hour := time.Now().Hour()
+				if hour >= 8 && hour <= 20 {
+					m.selectedHour = hour
+				} else if hour < 8 {
+					m.selectedHour = 8
+				} else {
+					m.selectedHour = 20
+				}
+			} else if m.currentView == DayView {
+				hour := time.Now().Hour()
+				if hour >= 6 && hour <= 22 {
+					m.selectedHour = hour
+				} else if hour < 6 {
+					m.selectedHour = 6
+				} else {
+					m.selectedHour = 22
+				}
+			}
 			m.loadEvents()
 			cmds = append(cmds, loadEventsCmd(m.selectedDate))
 			
 		case "a":
 			// Add new event
-			modal := NewEventModal(m.selectedDate, nil, m.styles)
+			defaultTime := ""
+			// Get the selected hour if in week or day view and calendar is focused
+			if m.focusedPane == CalendarPane {
+				switch m.currentView {
+				case WeekView:
+					defaultTime = m.weekView.GetSelectedHour()
+				case DayView:
+					defaultTime = m.dayView.GetSelectedHour()
+				}
+			}
+			modal := NewEventModalWithTime(m.selectedDate, nil, defaultTime, m.styles)
 			m.modalStack = append(m.modalStack, modal)
 			return m, modal.Init()
 			
@@ -217,18 +266,30 @@ func (m *Model) handleCalendarNavigation(msg tea.KeyMsg) {
 	case "j", "down":
 		if m.currentView == MonthView {
 			m.selectedDate = m.selectedDate.AddDate(0, 0, 7)
-		} else {
-			// In week/day view, this would move through hours
-			// For now, just move to next day
-			m.selectedDate = m.selectedDate.AddDate(0, 0, 1)
+		} else if m.currentView == WeekView {
+			// Move down one hour in week view
+			if m.selectedHour < 20 { // Max hour is 20:00
+				m.selectedHour++
+			}
+		} else if m.currentView == DayView {
+			// Move down one hour in day view
+			if m.selectedHour < 22 { // Day view goes to 22:00
+				m.selectedHour++
+			}
 		}
 	case "k", "up":
 		if m.currentView == MonthView {
 			m.selectedDate = m.selectedDate.AddDate(0, 0, -7)
-		} else {
-			// In week/day view, this would move through hours
-			// For now, just move to previous day
-			m.selectedDate = m.selectedDate.AddDate(0, 0, -1)
+		} else if m.currentView == WeekView {
+			// Move up one hour in week view
+			if m.selectedHour > 8 { // Min hour is 8:00
+				m.selectedHour--
+			}
+		} else if m.currentView == DayView {
+			// Move up one hour in day view
+			if m.selectedHour > 6 { // Day view starts at 6:00
+				m.selectedHour--
+			}
 		}
 	case "ctrl+u":
 		if m.currentView == WeekView {

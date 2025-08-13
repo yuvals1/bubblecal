@@ -32,6 +32,15 @@ const (
 	inputDescription
 )
 
+func NewEventModalWithTime(date time.Time, event *model.Event, defaultTime string, styles *Styles) *EventModal {
+	m := NewEventModal(date, event, styles)
+	// Override start time if provided and not editing
+	if defaultTime != "" && event == nil && !m.allDay {
+		m.inputs[inputStartTime].SetValue(defaultTime)
+	}
+	return m
+}
+
 func NewEventModal(date time.Time, event *model.Event, styles *Styles) *EventModal {
 	m := &EventModal{
 		date:         date,
@@ -175,29 +184,22 @@ func (m *EventModal) saveEvent() error {
 		if event.StartTime == "" {
 			return fmt.Errorf("start time required for timed events")
 		}
-	}
-	
-	// Load existing events
-	events, err := storage.LoadDayEvents(m.date)
-	if err != nil {
-		return err
+		// Validate time format
+		if !isValidTime(event.StartTime) {
+			return fmt.Errorf("invalid start time format (use HH:MM)")
+		}
+		if event.EndTime != "" && !isValidTime(event.EndTime) {
+			return fmt.Errorf("invalid end time format (use HH:MM)")
+		}
 	}
 	
 	if m.editingEvent != nil {
-		// Find and replace the event
-		for i, e := range events {
-			if e == m.editingEvent {
-				events[i] = event
-				break
-			}
-		}
+		// Update existing event using storage layer
+		return storage.UpdateEvent(m.date, m.editingEvent, event)
 	} else {
 		// Add new event
-		events = append(events, event)
+		return storage.SaveEvent(m.date, event)
 	}
-	
-	// Save back
-	return storage.SaveDayEvents(m.date, events)
 }
 
 func (m *EventModal) View() string {
@@ -337,17 +339,8 @@ func (m *DeleteModal) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 }
 
 func (m *DeleteModal) deleteEvent() error {
-	events, err := storage.LoadDayEvents(m.date)
-	if err != nil {
-		return err
-	}
-	
-	if m.index >= 0 && m.index < len(events) {
-		events = append(events[:m.index], events[m.index+1:]...)
-		return storage.SaveDayEvents(m.date, events)
-	}
-	
-	return fmt.Errorf("invalid event index")
+	// Use storage layer's delete function
+	return storage.DeleteEvent(m.date, m.event)
 }
 
 func (m *DeleteModal) View() string {
@@ -505,4 +498,19 @@ func (m *HelpModal) View() string {
 	return lipgloss.Place(m.width, m.height,
 		lipgloss.Center, lipgloss.Center,
 		modal)
+}
+
+// Helper function to validate time format
+func isValidTime(timeStr string) bool {
+	if len(timeStr) != 5 {
+		return false
+	}
+	if timeStr[2] != ':' {
+		return false
+	}
+	var hour, min int
+	if _, err := fmt.Sscanf(timeStr, "%d:%d", &hour, &min); err != nil {
+		return false
+	}
+	return hour >= 0 && hour <= 23 && min >= 0 && min <= 59
 }

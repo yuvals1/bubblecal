@@ -46,26 +46,31 @@ func (m *MonthViewModel) View() string {
 	// Build the calendar
 	var lines []string
 	
+	// Calculate cell width (account for 7 days and spacing)
+	cellWidth := (m.width - 6) / 7
+	if cellWidth < 8 {
+		cellWidth = 8
+	}
+	
 	// Header with weekday names
 	weekdays := []string{"Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"}
 	var headerCells []string
 	for _, day := range weekdays {
 		cell := lipgloss.NewStyle().
-			Width(10).
+			Width(cellWidth).
 			Align(lipgloss.Center).
 			Bold(true).
 			Render(day)
 		headerCells = append(headerCells, cell)
 	}
 	lines = append(lines, lipgloss.JoinHorizontal(lipgloss.Top, headerCells...))
-	lines = append(lines, strings.Repeat("─", m.width-4)) // Separator
+	lines = append(lines, strings.Repeat("─", len(lipgloss.JoinHorizontal(lipgloss.Top, headerCells...)))) // Separator
 	
 	// Previous month's trailing days
 	prevLast := firstOfMonth.AddDate(0, 0, -1)
 	
 	// Build calendar grid
 	var currentWeek []string
-	cellWidth := (m.width - 4) / 7
 	
 	// Fill leading days from previous month
 	for i := 0; i < startWeekday; i++ {
@@ -101,7 +106,7 @@ func (m *MonthViewModel) View() string {
 	for len(lines) < 8 { // 1 header + 1 separator + 6 weeks
 		emptyWeek := make([]string, 7)
 		for i := 0; i < 7; i++ {
-			emptyWeek[i] = lipgloss.NewStyle().Width(cellWidth).Height(3).Render("")
+			emptyWeek[i] = lipgloss.NewStyle().Width(cellWidth).Height(2).Render("")
 		}
 		lines = append(lines, lipgloss.JoinHorizontal(lipgloss.Top, emptyWeek...))
 	}
@@ -115,8 +120,15 @@ func (m *MonthViewModel) renderDayCell(date time.Time, otherMonth bool, width in
 	// Base style
 	style := lipgloss.NewStyle().
 		Width(width).
-		Height(3).
+		Height(2).
 		Padding(0, 1)
+	
+	// Today marker
+	todayMarker := ""
+	today := time.Now()
+	if sameDay(date, today) {
+		todayMarker = lipgloss.NewStyle().Foreground(lipgloss.Color("196")).Render(" T")
+	}
 	
 	// Apply styling based on date properties
 	if otherMonth {
@@ -133,15 +145,11 @@ func (m *MonthViewModel) renderDayCell(date time.Time, otherMonth bool, width in
 			Bold(true)
 	}
 	
-	// Today
-	today := time.Now()
-	if sameDay(date, today) {
-		if !sameDay(date, *m.selectedDate) {
-			style = style.
-				Background(m.styles.TodayDate.GetBackground()).
-				Foreground(m.styles.TodayDate.GetForeground())
-		}
-		dayNum += " T" // Add T marker for today
+	// Today background (only if not selected)
+	if sameDay(date, today) && !sameDay(date, *m.selectedDate) {
+		style = style.
+			Background(m.styles.TodayDate.GetBackground()).
+			Foreground(m.styles.TodayDate.GetForeground())
 	}
 	
 	// Load events for badge
@@ -152,8 +160,9 @@ func (m *MonthViewModel) renderDayCell(date time.Time, otherMonth bool, width in
 		for _, evt := range events {
 			if evt.IsAllDay() {
 				title := evt.Title
-				if len(title) > 8 {
-					title = title[:7] + "…"
+				maxLen := width - 6
+				if len(title) > maxLen {
+					title = title[:maxLen-1] + "…"
 				}
 				eventInfo = "\n" + m.styles.EventBadge.Render(title)
 				break
@@ -161,10 +170,14 @@ func (m *MonthViewModel) renderDayCell(date time.Time, otherMonth bool, width in
 		}
 		// If no all-day event, show count
 		if eventInfo == "" {
-			eventInfo = "\n" + m.styles.EventBadge.Render(fmt.Sprintf("●%d", len(events)))
+			eventInfo = " " + m.styles.EventBadge.Render(fmt.Sprintf("●%d", len(events)))
 		}
 	}
 	
-	content := dayNum + eventInfo
-	return style.Render(content)
+	// Compose the cell content
+	if todayMarker != "" {
+		// Put today marker inline with day number
+		return style.Render(dayNum + todayMarker + eventInfo)
+	}
+	return style.Render(dayNum + eventInfo)
 }

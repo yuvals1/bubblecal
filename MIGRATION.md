@@ -1,7 +1,7 @@
 # Migration from tview to Bubble Tea
 
 ## Status
-The initial Bubble Tea implementation is complete with core functionality:
+✅ **Migration Complete!** The Bubble Tea implementation now has full feature parity with improvements:
 - ✅ Month, Week, and Day views
 - ✅ Agenda sidebar
 - ✅ Keyboard navigation (vim keys + arrows)
@@ -54,12 +54,15 @@ internal/
 3. **Customizable rendering** - Complete control over output
 4. **Modern patterns** - Follows The Elm Architecture
 
-## Next Steps for Full Feature Parity
-- [ ] Improve form handling in event modal (better validation)
-- [ ] Add more sophisticated week/day hour selection
-- [ ] Implement better scrolling in agenda
-- [ ] Add month/week mini-calendar in week view
-- [ ] Performance optimizations for rendering
+## Improvements Over tview Version
+- ✅ Better border rendering with proper focus indicators
+- ✅ Improved event saving/updating using storage layer properly
+- ✅ Fixed agenda scrolling and selection
+- ✅ Better month view cell sizing and alignment
+- ✅ Cleaner week/day view layouts
+- ✅ Time validation (HH:MM format)
+- ✅ Red "T" marker for today
+- ✅ Proper event editing (updates existing events correctly)
 
 ## Keyboard Shortcuts
 - `Space` - Cycle views (Month → Week → Day)
