@@ -755,7 +755,7 @@ func (m *Model) updateViewSizes() {
 			m.dayView.SetSize(calendarWidth, calendarHeight)
 		}
 		if m.listView != nil {
-			m.listView.SetSize(m.width - 2, m.height - 3)
+			m.listView.SetSize(m.width - 2, m.height - 4)
 		}
 		if m.agendaView != nil {
 			m.agendaView.SetSize(calendarWidth, agendaHeight)
@@ -779,7 +779,7 @@ func (m *Model) updateViewSizes() {
 			m.dayView.SetSize(calendarWidth, calendarHeight)
 		}
 		if m.listView != nil {
-			m.listView.SetSize(m.width - 2, m.height - 3)
+			m.listView.SetSize(m.width - 2, m.height - 4)
 		}
 		if m.agendaView != nil {
 			m.agendaView.SetSize(agendaWidth, calendarHeight)
@@ -861,7 +861,7 @@ func (m *Model) View() string {
 		// Full width list view
 		listBox := focusedBorderStyle.
 			Width(m.width - 2).
-			Height(m.height - 3).
+			Height(m.height - 4). // Account for header
 			Render(lipgloss.NewStyle().Padding(0, 1).Render(viewTitle) + "\n" + calendarView)
 		main = listBox
 	} else if m.agendaBottom {
