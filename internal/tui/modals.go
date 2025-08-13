@@ -13,20 +13,32 @@ import (
 	"github.com/charmbracelet/lipgloss"
 )
 
+// FieldType represents different field types in the modal
+type FieldType int
+
+const (
+	FieldTitle FieldType = iota
+	FieldAllDay
+	FieldStartTime
+	FieldEndTime
+	FieldCategory
+	FieldDescription
+)
+
 // EventModal for creating/editing events
 type EventModal struct {
 	date            time.Time
 	editingEvent    *model.Event
 	inputs          []textinput.Model
-	focusIndex      int
+	focusedField    FieldType
 	allDay          bool
 	styles          *Styles
 	width           int
 	height          int
-	errorMsg        string // Display error messages
+	errorMsg        string
 	categories      []config.Category
-	selectedCatIdx  int  // Selected category index
-	categoryMode    bool // True when selecting category
+	selectedCatIdx  int
+	categoryMode    bool
 }
 
 const (
@@ -56,6 +68,7 @@ func NewEventModal(date time.Time, event *model.Event, styles *Styles, categorie
 		styles:       styles,
 		inputs:       make([]textinput.Model, 4), // Reduced from 5 to 4 (removed category input)
 		categories:   categories,
+		focusedField: FieldTitle, // Start with title focused
 	}
 	
 	// Initialize inputs
@@ -125,68 +138,34 @@ func (m *EventModal) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 			return m, func() tea.Msg { return ModalCloseMsg(true) }
 			
-		case "tab", "down":
-			if m.categoryMode {
-				m.selectedCatIdx++
-				if m.selectedCatIdx >= len(m.categories) {
-					m.selectedCatIdx = 0
-				}
-				return m, nil
-			}
-			m.focusIndex++
-			if m.focusIndex >= len(m.inputs)+1 { // +1 for category field
-				m.focusIndex = 0
-			}
-			m.updateFocus()
+		case "tab", "down", "j":
+			return m.handleNavigation(1), nil
 			
-		case "shift+tab", "up":
-			if m.categoryMode {
-				m.selectedCatIdx--
-				if m.selectedCatIdx < 0 {
-					m.selectedCatIdx = len(m.categories) - 1
-				}
-				return m, nil
-			}
-			m.focusIndex--
-			if m.focusIndex < 0 {
-				m.focusIndex = len(m.inputs) // Set to category field
-			}
-			m.updateFocus()
+		case "shift+tab", "up", "k":
+			return m.handleNavigation(-1), nil
 			
-		case "ctrl+a":
-			// Toggle all-day
-			m.allDay = !m.allDay
-			if m.allDay {
-				m.inputs[inputStartTime].SetValue("")
-				m.inputs[inputEndTime].SetValue("")
-			} else {
-				m.inputs[inputStartTime].SetValue("09:00")
-				m.inputs[inputEndTime].SetValue("10:00")
-			}
+		case "ctrl+s", "enter":
+			newModel, cmd := m.handleAction()
+			return newModel, cmd
 			
-		case "enter":
-			if m.categoryMode {
-				m.categoryMode = false
-				return m, nil
+		case " ":
+			if m.focusedField == FieldAllDay {
+				m.toggleAllDay()
+			} else if m.focusedField == FieldCategory {
+				m.categoryMode = !m.categoryMode
 			}
-			// If focus is on category field, open category selector
-			if m.focusIndex == len(m.inputs) {
-				m.categoryMode = true
-				return m, nil
-			}
-			// Save the event from any field
-			if err := m.saveEvent(); err == nil {
-				return m, func() tea.Msg { return ModalCloseMsg(true) }
-			} else {
-				m.errorMsg = err.Error()
-			}
+			return m, nil
 			
 		default:
-			// Update the focused input
-			if m.focusIndex < len(m.inputs) {
-				var cmd tea.Cmd
-				m.inputs[m.focusIndex], cmd = m.inputs[m.focusIndex].Update(msg)
-				return m, cmd
+			// Handle text input
+			if m.focusedField == FieldTitle || m.focusedField == FieldStartTime || 
+			   m.focusedField == FieldEndTime || m.focusedField == FieldDescription {
+				inputIdx := m.getInputIndex()
+				if inputIdx >= 0 && inputIdx < len(m.inputs) {
+					var cmd tea.Cmd
+					m.inputs[inputIdx], cmd = m.inputs[inputIdx].Update(msg)
+					return m, cmd
+				}
 			}
 		}
 	}
@@ -194,13 +173,100 @@ func (m *EventModal) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	return m, nil
 }
 
+// Helper methods for the new navigation system
+func (m *EventModal) handleNavigation(direction int) *EventModal {
+	if m.categoryMode {
+		m.selectedCatIdx += direction
+		if m.selectedCatIdx >= len(m.categories) {
+			m.selectedCatIdx = 0
+		} else if m.selectedCatIdx < 0 {
+			m.selectedCatIdx = len(m.categories) - 1
+		}
+		return m
+	}
+	
+	fields := []FieldType{FieldTitle, FieldAllDay, FieldStartTime, FieldEndTime, FieldCategory, FieldDescription}
+	if m.allDay {
+		fields = []FieldType{FieldTitle, FieldAllDay, FieldCategory, FieldDescription}
+	}
+	
+	currentIdx := -1
+	for i, field := range fields {
+		if field == m.focusedField {
+			currentIdx = i
+			break
+		}
+	}
+	
+	currentIdx += direction
+	if currentIdx >= len(fields) {
+		currentIdx = 0
+	} else if currentIdx < 0 {
+		currentIdx = len(fields) - 1
+	}
+	
+	m.focusedField = fields[currentIdx]
+	m.updateFocus()
+	return m
+}
+
+func (m *EventModal) handleAction() (*EventModal, tea.Cmd) {
+	if m.categoryMode {
+		m.categoryMode = false
+		return m, nil
+	}
+	
+	if m.focusedField == FieldCategory {
+		m.categoryMode = true
+		return m, nil
+	}
+	
+	// Save event
+	if err := m.saveEvent(); err == nil {
+		return m, func() tea.Msg { return ModalCloseMsg(true) }
+	} else {
+		m.errorMsg = err.Error()
+		return m, nil
+	}
+}
+
+func (m *EventModal) toggleAllDay() {
+	m.allDay = !m.allDay
+	if m.allDay {
+		m.inputs[inputStartTime].SetValue("")
+		m.inputs[inputEndTime].SetValue("")
+		if m.focusedField == FieldStartTime || m.focusedField == FieldEndTime {
+			m.focusedField = FieldCategory
+		}
+	} else {
+		m.inputs[inputStartTime].SetValue("09:00")
+		m.inputs[inputEndTime].SetValue("10:00")
+	}
+	m.updateFocus()
+}
+
+func (m *EventModal) getInputIndex() int {
+	switch m.focusedField {
+	case FieldTitle:
+		return inputTitle
+	case FieldStartTime:
+		return inputStartTime
+	case FieldEndTime:
+		return inputEndTime
+	case FieldDescription:
+		return inputDescription
+	}
+	return -1
+}
+
 func (m *EventModal) updateFocus() {
 	for i := range m.inputs {
-		if i == m.focusIndex {
-			m.inputs[i].Focus()
-		} else {
-			m.inputs[i].Blur()
-		}
+		m.inputs[i].Blur()
+	}
+	
+	inputIdx := m.getInputIndex()
+	if inputIdx >= 0 && inputIdx < len(m.inputs) {
+		m.inputs[inputIdx].Focus()
 	}
 }
 
@@ -254,114 +320,191 @@ func (m *EventModal) View() string {
 		return "Loading..."
 	}
 	
-	title := "New Event"
+	// Header
+	title := "✨ New Event"
 	if m.editingEvent != nil {
-		title = "Edit Event"
+		title = "✏️ Edit Event"
 	}
-	title += fmt.Sprintf(" - %s", m.date.Format("Jan 2, 2006"))
 	
-	var fields []string
+	dateStr := lipgloss.NewStyle().
+		Foreground(lipgloss.Color("240")).
+		Render(m.date.Format("Monday, January 2, 2006"))
 	
-	// Title field
-	fields = append(fields, "Title:")
-	fields = append(fields, m.inputs[inputTitle].View())
-	fields = append(fields, "")
+	header := lipgloss.JoinVertical(lipgloss.Left,
+		lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color("33")).Render(title),
+		dateStr,
+		"",
+	)
 	
-	// All-day checkbox
-	allDayLabel := "[ ] All Day Event (Ctrl+A to toggle)"
+	// Build form fields
+	var content []string
+	
+	// Title field with focus indicator
+	content = append(content, m.renderField("📝 Title", FieldTitle, m.inputs[inputTitle].View()))
+	
+	// All-day toggle
+	allDayDisplay := "☐ All Day Event"
 	if m.allDay {
-		allDayLabel = "[✓] All Day Event (Ctrl+A to toggle)"
+		allDayDisplay = "☑ All Day Event"
 	}
-	fields = append(fields, allDayLabel)
-	fields = append(fields, "")
+	content = append(content, m.renderField("", FieldAllDay, allDayDisplay))
 	
-	// Time fields (disabled if all-day)
+	// Time fields (only if not all-day)
 	if !m.allDay {
-		fields = append(fields, "Start Time:")
-		fields = append(fields, m.inputs[inputStartTime].View())
-		fields = append(fields, "")
-		
-		fields = append(fields, "End Time (optional):")
-		fields = append(fields, m.inputs[inputEndTime].View())
-		fields = append(fields, "")
+		content = append(content, m.renderField("🕒 Start Time", FieldStartTime, m.inputs[inputStartTime].View()))
+		content = append(content, m.renderField("🕕 End Time", FieldEndTime, m.inputs[inputEndTime].View()))
 	}
 	
-	// Category field - show selector
-	fields = append(fields, "Category: (Enter to select)")
-	
+	// Category selector
 	if m.categoryMode {
-		// Show category list
-		catList := ""
-		for i, cat := range m.categories {
-			colorStyle := lipgloss.NewStyle().Foreground(lipgloss.Color(cat.Color))
-			catName := colorStyle.Render(fmt.Sprintf("● %s", cat.Name))
-			if i == m.selectedCatIdx {
-				catName = lipgloss.NewStyle().
-					Background(lipgloss.Color("238")).
-					Foreground(lipgloss.Color(cat.Color)).
-					Bold(true).
-					Render(fmt.Sprintf(" ▶ %s ", cat.Name))
-			}
-			catList += catName + "\n"
-		}
-		fields = append(fields, catList)
+		content = append(content, m.renderCategorySelector())
 	} else {
-		// Show selected category
-		selectedCat := "(none)"
-		if m.selectedCatIdx < len(m.categories) {
-			cat := m.categories[m.selectedCatIdx]
-			colorStyle := lipgloss.NewStyle().Foreground(lipgloss.Color(cat.Color))
-			selectedCat = colorStyle.Render(fmt.Sprintf("● %s", cat.Name))
-		}
-		// Highlight if focused
-		if m.focusIndex == len(m.inputs) {
-			selectedCat = lipgloss.NewStyle().
-				Background(lipgloss.Color("238")).
-				Padding(0, 1).
-				Render(selectedCat)
-		}
-		fields = append(fields, selectedCat)
+		content = append(content, m.renderField("🏷️ Category", FieldCategory, m.renderSelectedCategory()))
 	}
-	fields = append(fields, "")
 	
 	// Description field
-	fields = append(fields, "Description:")
-	fields = append(fields, m.inputs[inputDescription].View())
-	fields = append(fields, "")
+	content = append(content, m.renderField("📄 Description", FieldDescription, m.inputs[inputDescription].View()))
 	
-	// Error message if any
+	// Error message
 	if m.errorMsg != "" {
-		errorStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("196")).Bold(true)
-		fields = append(fields, errorStyle.Render("Error: " + m.errorMsg))
-		fields = append(fields, "")
+		errorBox := lipgloss.NewStyle().
+			Foreground(lipgloss.Color("196")).
+			Background(lipgloss.Color("52")).
+			Padding(0, 1).
+			Margin(1, 0).
+			Bold(true).
+			Render("❌ " + m.errorMsg)
+		content = append(content, errorBox)
 	}
 	
-	// Buttons - Enter saves from any field
-	saveBtn := "[ Save (Enter) ]"
-	cancelBtn := "[ Cancel (Esc) ]"
+	// Instructions
+	instructions := m.renderInstructions()
 	
-	buttons := lipgloss.JoinHorizontal(lipgloss.Top, saveBtn, "  ", cancelBtn)
-	fields = append(fields, buttons)
+	// Combine all content
+	mainContent := lipgloss.JoinVertical(lipgloss.Left, content...)
+	fullContent := lipgloss.JoinVertical(lipgloss.Left, header, mainContent, "", instructions)
 	
-	content := lipgloss.JoinVertical(lipgloss.Left, fields...)
-	
+	// Modal styling
 	modalStyle := lipgloss.NewStyle().
 		Border(lipgloss.RoundedBorder()).
-		BorderForeground(lipgloss.Color("220")).
-		Padding(1, 2).
-		Width(60).
-		Background(lipgloss.Color("235"))
+		BorderForeground(lipgloss.Color("39")).
+		Padding(2, 3).
+		Width(70).
+		Background(lipgloss.Color("0"))
 	
-	modal := modalStyle.Render(lipgloss.JoinVertical(lipgloss.Center,
-		lipgloss.NewStyle().Bold(true).Render(title),
-		"",
-		content,
-	))
+	modal := modalStyle.Render(fullContent)
 	
 	// Center the modal
 	return lipgloss.Place(m.width, m.height,
 		lipgloss.Center, lipgloss.Center,
 		modal)
+}
+
+// Helper methods for rendering UI components
+func (m *EventModal) renderField(label string, fieldType FieldType, content string) string {
+	isFocused := m.focusedField == fieldType && !m.categoryMode
+	
+	// Create field container
+	fieldStyle := lipgloss.NewStyle().Margin(0, 0, 1, 0)
+	if isFocused {
+		fieldStyle = fieldStyle.BorderLeft(true).BorderStyle(lipgloss.NormalBorder()).BorderForeground(lipgloss.Color("39"))
+	}
+	
+	var parts []string
+	if label != "" {
+		labelStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("247"))
+		if isFocused {
+			labelStyle = labelStyle.Foreground(lipgloss.Color("39")).Bold(true)
+		}
+		parts = append(parts, labelStyle.Render(label))
+	}
+	
+	// Add focus indicator for non-input fields
+	if isFocused && (fieldType == FieldAllDay || fieldType == FieldCategory) {
+		content = "▶ " + content
+	}
+	
+	parts = append(parts, content)
+	
+	field := lipgloss.JoinVertical(lipgloss.Left, parts...)
+	return fieldStyle.Render(field)
+}
+
+func (m *EventModal) renderSelectedCategory() string {
+	if m.selectedCatIdx >= len(m.categories) {
+		return lipgloss.NewStyle().Foreground(lipgloss.Color("240")).Render("(none)")
+	}
+	
+	cat := m.categories[m.selectedCatIdx]
+	return lipgloss.NewStyle().
+		Foreground(lipgloss.Color(cat.Color)).
+		Render(fmt.Sprintf("● %s", cat.Name))
+}
+
+func (m *EventModal) renderCategorySelector() string {
+	header := lipgloss.NewStyle().
+		Foreground(lipgloss.Color("39")).
+		Bold(true).
+		Render("🏷️ Select Category:")
+	
+	var categories []string
+	for i, cat := range m.categories {
+		catStyle := lipgloss.NewStyle().Foreground(lipgloss.Color(cat.Color))
+		catText := fmt.Sprintf("● %s", cat.Name)
+		
+		if i == m.selectedCatIdx {
+			catText = lipgloss.NewStyle().
+				Background(lipgloss.Color("39")).
+				Foreground(lipgloss.Color("0")).
+				Padding(0, 1).
+				Bold(true).
+				Render("▶ " + cat.Name + " ◀")
+		} else {
+			catText = "  " + catStyle.Render(catText)
+		}
+		
+		categories = append(categories, catText)
+	}
+	
+	categoryList := lipgloss.JoinVertical(lipgloss.Left, categories...)
+	
+	selectorBox := lipgloss.NewStyle().
+		Border(lipgloss.RoundedBorder()).
+		BorderForeground(lipgloss.Color("39")).
+		Padding(1, 2).
+		Margin(0, 0, 1, 0).
+		Background(lipgloss.Color("235"))
+	
+	return lipgloss.JoinVertical(lipgloss.Left,
+		header,
+		selectorBox.Render(categoryList),
+	)
+}
+
+func (m *EventModal) renderInstructions() string {
+	var instructions []string
+	
+	if m.categoryMode {
+		instructions = append(instructions,
+			lipgloss.NewStyle().Foreground(lipgloss.Color("240")).Render("↑↓ Navigate categories"),
+			lipgloss.NewStyle().Foreground(lipgloss.Color("240")).Render("Enter/Space Select"),
+			lipgloss.NewStyle().Foreground(lipgloss.Color("240")).Render("Esc Cancel"),
+		)
+	} else {
+		instructions = append(instructions,
+			lipgloss.NewStyle().Foreground(lipgloss.Color("240")).Render("Tab/↑↓ Navigate fields"),
+			lipgloss.NewStyle().Foreground(lipgloss.Color("240")).Render("Space Toggle all-day/category"),
+			lipgloss.NewStyle().Foreground(lipgloss.Color("33")).Bold(true).Render("Enter Save event"),
+			lipgloss.NewStyle().Foreground(lipgloss.Color("196")).Render("Esc Cancel"),
+		)
+	}
+	
+	return lipgloss.NewStyle().
+		BorderTop(true).
+		BorderStyle(lipgloss.NormalBorder()).
+		BorderForeground(lipgloss.Color("240")).
+		PaddingTop(1).
+		Render(lipgloss.JoinHorizontal(lipgloss.Left, instructions...))
 }
 
 // DeleteModal for confirming deletion
