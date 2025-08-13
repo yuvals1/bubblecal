@@ -139,10 +139,27 @@ func (m *MonthView) renderDayCell(date time.Time, otherMonth bool) *tview.TableC
         label = fmt.Sprintf("[white]%s[::-]", label)
     }
 
-	// Show real event count
+	// Show first all-day event or event count
 	badge := ""
 	if events, err := storage.LoadDayEvents(date); err == nil && len(events) > 0 {
-		badge = fmt.Sprintf(" [green]●%d[::-]", len(events))
+		// Look for the first all-day event
+		hasAllDay := false
+		for _, evt := range events {
+			if evt.IsAllDay() {
+				// Truncate title if too long (max 10 chars to fit in cell)
+				title := evt.Title
+				if len(title) > 10 {
+					title = title[:9] + "…"
+				}
+				badge = fmt.Sprintf("\n[green]%s[::-]", title)
+				hasAllDay = true
+				break
+			}
+		}
+		// If no all-day event, show event count
+		if !hasAllDay {
+			badge = fmt.Sprintf(" [green]●%d[::-]", len(events))
+		}
 	}
 
     // Add a red "T" marker to clearly denote today
