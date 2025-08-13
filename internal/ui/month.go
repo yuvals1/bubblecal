@@ -17,7 +17,7 @@ type MonthView struct {
 func NewMonthView(state *UIState) *MonthView {
 	t := tview.NewTable()
 	t.SetBorders(true)
-	t.SetBorder(true)  // Add border to the table itself
+	t.SetBorder(true).SetTitle("Monthly")  // Add border and title
 	t.SetFixed(1, 0)
     // Allow the table to display a strong selection highlight.
     t.SetSelectable(true, true)
@@ -42,8 +42,10 @@ func (m *MonthView) Primitive() tview.Primitive { return m.table }
 func (m *MonthView) SetFocused(focused bool) {
 	if focused {
 		m.table.SetBorderColor(tcell.ColorYellow)
+		m.table.SetTitleColor(tcell.ColorYellow)
 	} else {
 		m.table.SetBorderColor(tcell.ColorDefault)
+		m.table.SetTitleColor(tcell.ColorDefault)
 	}
 }
 

@@ -20,7 +20,7 @@ type WeekView struct {
 func NewWeekView(state *UIState) *WeekView {
     t := tview.NewTable()
     t.SetBorders(true)
-    t.SetBorder(true)  // Add border to the table itself
+    t.SetBorder(true).SetTitle("Weekly")  // Add border and title
     // Row 0 = weekdays header, Col 0 = hour labels
     t.SetFixed(1, 1)
     t.SetSelectable(true, true)
@@ -58,8 +58,10 @@ func (w *WeekView) GetSelectedHour() string {
 func (w *WeekView) SetFocused(focused bool) {
 	if focused {
 		w.table.SetBorderColor(tcell.ColorYellow)
+		w.table.SetTitleColor(tcell.ColorYellow)
 	} else {
 		w.table.SetBorderColor(tcell.ColorDefault)
+		w.table.SetTitleColor(tcell.ColorDefault)
 	}
 }
 

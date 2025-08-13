@@ -18,8 +18,8 @@ type DayView struct {
 func NewDayView(state *UIState) *DayView {
 	t := tview.NewTable()
 	t.SetBorders(true)
-	t.SetBorder(true)
-	t.SetFixed(1, 1) // Fixed header row and time column
+	t.SetBorder(true).SetTitle("Daily")
+	t.SetFixed(2, 1) // Fixed date and header rows, and time column
 	t.SetSelectable(true, false) // Can select rows (hours), not columns
 	t.SetSelectedStyle(tcell.StyleDefault.Background(tcell.ColorYellow).Foreground(tcell.ColorBlack).Bold(true))
 	
@@ -33,10 +33,12 @@ func (d *DayView) Primitive() tview.Primitive { return d.table }
 // GetSelectedHour returns the hour of the currently selected row
 func (d *DayView) GetSelectedHour() string {
 	row, _ := d.table.GetSelection()
-	// Row 0 is header, rows 1+ are hours starting at 6am
-	if row > 0 {
-		hour := 6 + (row - 1)  // Start hour is 6, row 1 = 6am
-		if hour >= 0 && hour <= 23 {
+	// Row 0 is date, row 1 is headers, row 2+ are hours (or all-day then hours)
+	// Need to check if we have all-day events to know the offset
+	if row > 1 {
+		// Simple approach: calculate based on position, accounting for header rows
+		hour := 6 + (row - 2)  // Start hour is 6, row 2 = 6am (if no all-day)
+		if hour >= 6 && hour <= 22 {
 			return fmt.Sprintf("%02d:00", hour)
 		}
 	}
@@ -59,15 +61,23 @@ func (d *DayView) Refresh() {
 	
 	date := d.uiState.SelectedDate
 	
-	// Set title with the current date
-	d.table.SetTitle(fmt.Sprintf(" %s ", date.Format("Monday, January 2, 2006")))
+	// Keep title simple
+	d.table.SetTitle("Daily")
 	
-	// Header row
-	d.table.SetCell(0, 0, tview.NewTableCell("Time").
+	// Date as header row
+	d.table.SetCell(0, 0, tview.NewTableCell("").
+		SetSelectable(false))
+	d.table.SetCell(0, 1, tview.NewTableCell(date.Format("Monday, January 2, 2006")).
+		SetAlign(tview.AlignCenter).
+		SetSelectable(false).
+		SetStyle(tcell.StyleDefault.Bold(true).Foreground(tcell.ColorWhite)))
+	
+	// Column headers
+	d.table.SetCell(1, 0, tview.NewTableCell("Time").
 		SetAlign(tview.AlignCenter).
 		SetSelectable(false).
 		SetStyle(tcell.StyleDefault.Bold(true)))
-	d.table.SetCell(0, 1, tview.NewTableCell("Events").
+	d.table.SetCell(1, 1, tview.NewTableCell("Events").
 		SetAlign(tview.AlignCenter).
 		SetSelectable(false).
 		SetStyle(tcell.StyleDefault.Bold(true)))
@@ -102,11 +112,11 @@ func (d *DayView) Refresh() {
 	
 	// Show all-day events at the top if any
 	if len(allDayEvents) > 0 {
-		d.table.SetCell(1, 0, tview.NewTableCell("All Day").
+		d.table.SetCell(2, 0, tview.NewTableCell("All Day").
 			SetAlign(tview.AlignRight).
 			SetSelectable(false).
 			SetStyle(tcell.StyleDefault.Foreground(tcell.ColorGray)))
-		d.table.SetCell(1, 1, tview.NewTableCell(strings.Join(allDayEvents, " | ")).
+		d.table.SetCell(2, 1, tview.NewTableCell(strings.Join(allDayEvents, " | ")).
 			SetExpansion(1).
 			SetStyle(tcell.StyleDefault.Foreground(tcell.ColorGreen)))
 	}
@@ -114,9 +124,9 @@ func (d *DayView) Refresh() {
 	// Hour rows from 6:00 to 22:00 (covering most active hours)
 	startHour := 6
 	endHour := 22
-	startRow := 2 // Row 2 because row 0 is header, row 1 might be all-day events
+	startRow := 3 // Row 3 because row 0 is date, row 1 is headers, row 2 might be all-day events
 	if len(allDayEvents) == 0 {
-		startRow = 1
+		startRow = 2
 	}
 	
 	for r, h := startRow, startHour; h <= endHour; r, h = r+1, h+1 {
