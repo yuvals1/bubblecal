@@ -55,11 +55,7 @@ func (m *MonthViewModel) View() string {
 	// Header with weekday names
 	weekdays := []string{"Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"}
 	var headerCells []string
-	for i, day := range weekdays {
-		// Add vertical separator before each cell (except first)
-		if i > 0 {
-			headerCells = append(headerCells, lipgloss.NewStyle().Foreground(lipgloss.Color("240")).Render("│"))
-		}
+	for _, day := range weekdays {
 		cell := lipgloss.NewStyle().
 			Width(cellWidth).
 			Align(lipgloss.Center).
@@ -80,28 +76,17 @@ func (m *MonthViewModel) View() string {
 	for i := 0; i < startWeekday; i++ {
 		day := prevLast.Day() - (startWeekday - 1 - i)
 		date := time.Date(prevLast.Year(), prevLast.Month(), day, 0, 0, 0, 0, now.Location())
-		// Add vertical separator before each cell (except first in row)
-		if len(currentWeek) > 0 {
-			currentWeek = append(currentWeek, lipgloss.NewStyle().Foreground(lipgloss.Color("240")).Render("│"))
-		}
 		currentWeek = append(currentWeek, m.renderDayCell(date, true, cellWidth))
 	}
 	
 	// Fill current month
 	for day := 1; day <= daysInMonth; day++ {
 		date := time.Date(now.Year(), now.Month(), day, 0, 0, 0, 0, now.Location())
-		
-		// Add vertical separator before each cell (except first in row)
-		if len(currentWeek) > 0 {
-			currentWeek = append(currentWeek, lipgloss.NewStyle().Foreground(lipgloss.Color("240")).Render("│"))
-		}
 		currentWeek = append(currentWeek, m.renderDayCell(date, false, cellWidth))
 		
 		// End of week
-		if len(currentWeek) >= 13 { // 7 cells + 6 separators
+		if len(currentWeek) == 7 {
 			lines = append(lines, lipgloss.JoinHorizontal(lipgloss.Top, currentWeek...))
-			// Add horizontal line between weeks
-			lines = append(lines, strings.Repeat("─", m.width-4))
 			currentWeek = []string{}
 		}
 	}
@@ -109,10 +94,8 @@ func (m *MonthViewModel) View() string {
 	// Fill trailing days from next month
 	if len(currentWeek) > 0 {
 		nextDay := 1
-		for len(currentWeek) < 13 { // 7 cells + 6 separators
+		for len(currentWeek) < 7 {
 			date := firstOfNext.AddDate(0, 0, nextDay-1)
-			// Add vertical separator before each cell
-			currentWeek = append(currentWeek, lipgloss.NewStyle().Foreground(lipgloss.Color("240")).Render("│"))
 			currentWeek = append(currentWeek, m.renderDayCell(date, true, cellWidth))
 			nextDay++
 		}
