@@ -80,8 +80,15 @@ func (d *DayViewModel) View() string {
 	
 	// All-day events
 	if len(allDayEvents) > 0 {
+		// Calculate height for all-day section
+		allDayHeight := len(allDayEvents)
+		if allDayHeight < 1 {
+			allDayHeight = 1
+		}
+		
 		allDayLabel := lipgloss.NewStyle().
 			Width(10).
+			Height(allDayHeight).
 			Align(lipgloss.Right).
 			Foreground(lipgloss.Color("240")).
 			Render("All Day ")
@@ -89,7 +96,8 @@ func (d *DayViewModel) View() string {
 		allDayContent := lipgloss.NewStyle().
 			Foreground(d.styles.EventBadge.GetForeground()).
 			Width(d.width - 14).
-			Render(strings.Join(allDayEvents, " | "))
+			Height(allDayHeight).
+			Render(strings.Join(allDayEvents, "\n"))
 		
 		lines = append(lines, lipgloss.JoinHorizontal(lipgloss.Top, allDayLabel, allDayContent))
 		lines = append(lines, strings.Repeat("─", d.width-4))

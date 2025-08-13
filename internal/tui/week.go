@@ -74,8 +74,25 @@ func (w *WeekViewModel) View() string {
 	
 	// All-day events row
 	var allDayRow []string
+	
+	// First, calculate the maximum height needed for all-day events
+	maxAllDayHeight := 1
+	var allDayContents []string
+	for d := 0; d < 7; d++ {
+		date := weekStart.AddDate(0, 0, d)
+		content := w.getAllDayEvents(date)
+		allDayContents = append(allDayContents, content)
+		if content != "" {
+			height := strings.Count(content, "\n") + 1
+			if height > maxAllDayHeight {
+				maxAllDayHeight = height
+			}
+		}
+	}
+	
 	allDayLabel := lipgloss.NewStyle().
 		Width(8).
+		Height(maxAllDayHeight).
 		Align(lipgloss.Right).
 		Foreground(lipgloss.Color("240")).
 		Render("All Day ")
@@ -83,11 +100,11 @@ func (w *WeekViewModel) View() string {
 	
 	for d := 0; d < 7; d++ {
 		date := weekStart.AddDate(0, 0, d)
-		allDayEvents := w.getAllDayEvents(date)
+		allDayEvents := allDayContents[d]
 		
 		cellStyle := lipgloss.NewStyle().
 			Width(colWidth).
-			Height(1).
+			Height(maxAllDayHeight).
 			Padding(0, 1)
 		
 		// Subtle background for today
@@ -199,8 +216,8 @@ func (w *WeekViewModel) getAllDayEvents(date time.Time) string {
 	}
 	
 	if len(allDayTitles) > 0 {
-		// Join with separator if multiple all-day events
-		return strings.Join(allDayTitles, " | ")
+		// Return each all-day event on its own line
+		return strings.Join(allDayTitles, "\n")
 	}
 	return ""
 }
