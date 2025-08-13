@@ -65,6 +65,9 @@ type Model struct {
 	// Key tracking for double-key combinations
 	lastKey      string
 	
+	// Yanked (copied) event
+	yankedEvent  *model.Event
+	
 	// Config
 	config       *config.Config
 	
@@ -409,8 +412,8 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.config.Save()
 			}
 			
-		case "p":
-			// Toggle agenda position (bottom/right)
+		case "P":
+			// Toggle agenda position (bottom/right) - capital P
 			m.agendaBottom = !m.agendaBottom
 			// Save the preference
 			m.config.AgendaBottom = m.agendaBottom
@@ -444,6 +447,66 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			} else {
 				// Agenda pane
 				m.agendaView.GoToBottom()
+			}
+			
+		case "y":
+			// Yank (copy) selected event
+			if m.focusedPane == AgendaPane {
+				// Yank from agenda
+				if idx := m.agendaView.GetSelectedIndex(); idx >= 0 && idx < len(m.events) {
+					m.yankedEvent = m.events[idx]
+				}
+			} else if m.currentView == ListView {
+				// Yank from list view
+				if evt := m.listView.GetSelectedEvent(); evt != nil {
+					m.yankedEvent = evt.Event
+				}
+			}
+			// Could add visual feedback here
+			
+		case "p":
+			// Paste yanked event to current date
+			if m.yankedEvent != nil {
+				// Always allow paste in any view when calendar is focused
+				// Create a copy of the event for the selected date
+				newEvent := &model.Event{
+					StartTime:   m.yankedEvent.StartTime,
+					EndTime:     m.yankedEvent.EndTime,
+					Title:       m.yankedEvent.Title,
+					Category:    m.yankedEvent.Category,
+					Description: m.yankedEvent.Description,
+				}
+				
+				// If in week or day view and not an all-day event, update the time to selected hour
+				if !newEvent.IsAllDay() && (m.currentView == WeekView || m.currentView == DayView) {
+					// Calculate duration if there's an end time
+					var duration int
+					if newEvent.EndTime != "" {
+						var startHour, startMin, endHour, endMin int
+						fmt.Sscanf(newEvent.StartTime, "%d:%d", &startHour, &startMin)
+						fmt.Sscanf(newEvent.EndTime, "%d:%d", &endHour, &endMin)
+						duration = (endHour*60 + endMin) - (startHour*60 + startMin)
+					}
+					
+					// Set new start time based on selected hour
+					newEvent.StartTime = fmt.Sprintf("%02d:00", m.selectedHour)
+					
+					// Set new end time if there was one
+					if duration > 0 {
+						endMinutes := m.selectedHour*60 + duration
+						newEvent.EndTime = fmt.Sprintf("%02d:%02d", endMinutes/60, endMinutes%60)
+					} else {
+						newEvent.EndTime = ""
+					}
+				}
+				
+				// Save the event to the selected date
+				err := storage.SaveEvent(m.selectedDate, newEvent)
+				if err == nil {
+					// Reload events after successful paste
+					m.loadEvents()
+					cmds = append(cmds, loadEventsCmd(m.selectedDate))
+				}
 			}
 			
 		case "?":
@@ -832,6 +895,16 @@ func (m *Model) renderHeader() string {
 			Padding(0, 1).
 			Render("JUMP MODE")
 		headerText += " · " + jumpStatus
+	}
+	
+	if m.yankedEvent != nil {
+		yankStatus := lipgloss.NewStyle().
+			Background(lipgloss.Color("28")).
+			Foreground(lipgloss.Color("15")).
+			Bold(true).
+			Padding(0, 1).
+			Render("📋 " + m.yankedEvent.Title)
+		headerText += " · " + yankStatus
 	}
 	
 	return m.styles.Header.Width(m.width).Render(headerText)
