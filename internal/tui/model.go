@@ -314,14 +314,6 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case "ctrl+c", "q":
 			return m, tea.Quit
 			
-		case "tab":
-			// Toggle focus between calendar and agenda
-			if m.focusedPane == CalendarPane {
-				m.focusedPane = AgendaPane
-			} else {
-				m.focusedPane = CalendarPane
-			}
-			
 		case "enter":
 			// Enter focuses the agenda pane
 			if m.focusedPane == CalendarPane {

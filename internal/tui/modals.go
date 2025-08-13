@@ -712,7 +712,7 @@ func (m *HelpModal) View() string {
 		helpText = append(helpText, "  j/k ↑/↓   Move between hours")
 		helpText = append(helpText, "  Ctrl+U/D  Previous/next day")
 	}
-	helpText = append(helpText, "  Tab       Toggle focus (calendar ↔ agenda)")
+	helpText = append(helpText, "  Enter     Focus agenda / Esc  Return to calendar")
 	helpText = append(helpText, "  t or .    Go to today (current hour in Week/Day)")
 	helpText = append(helpText, "")
 	
