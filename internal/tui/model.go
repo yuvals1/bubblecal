@@ -818,20 +818,15 @@ func (m *Model) View() string {
 	
 	// Render main content
 	var calendarView string
-	viewTitle := ""
 	switch m.currentView {
 	case MonthView:
 		calendarView = m.monthView.View()
-		viewTitle = " Monthly "
 	case WeekView:
 		calendarView = m.weekView.View()
-		viewTitle = " Weekly "
 	case DayView:
 		calendarView = m.dayView.View()
-		viewTitle = " Daily "
 	case ListView:
 		calendarView = m.listView.View()
-		viewTitle = " List "
 	}
 	
 	// Create borders for calendar and agenda
@@ -862,7 +857,7 @@ func (m *Model) View() string {
 		listBox := focusedBorderStyle.
 			Width(m.width - 2).
 			Height(m.height - 4). // Account for header
-			Render(lipgloss.NewStyle().Padding(0, 1).Render(viewTitle) + "\n" + calendarView)
+			Render(calendarView)
 		main = listBox
 	} else if m.agendaBottom {
 		// Agenda at bottom layout - give it more space (about 1/3 of screen)
@@ -877,7 +872,7 @@ func (m *Model) View() string {
 		calendarBox := calendarBorder.
 			Width(calendarWidth).
 			MaxHeight(calendarHeight).
-			Render(lipgloss.NewStyle().Padding(0, 1).Render(viewTitle) + "\n" + calendarView)
+			Render(calendarView)
 		
 		// Render agenda
 		agendaTitle := fmt.Sprintf(" Agenda (%s) ", m.selectedDate.Format("Jan 2, 2006"))
@@ -901,7 +896,7 @@ func (m *Model) View() string {
 		calendarBox := calendarBorder.
 			Width(calendarWidth).
 			MaxHeight(contentHeight).
-			Render(lipgloss.NewStyle().Padding(0, 1).Render(viewTitle) + "\n" + calendarView)
+			Render(calendarView)
 		
 		agendaTitle := fmt.Sprintf(" Agenda (%s) ", m.selectedDate.Format("Jan 2, 2006"))
 		agendaBox := agendaBorder.
