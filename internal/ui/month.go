@@ -119,9 +119,11 @@ func (m *MonthView) renderDayCell(date time.Time, otherMonth bool) *tview.TableC
 		style = style.Background(colorSelectedBackground).Foreground(colorSelectedText)
 	}
 
-    // Today: emphasize with background/text color
+    // Today: emphasize with background; keep foreground dynamic so inline tags (red T) work
     if sameDay(date, time.Now()) {
-        style = style.Background(colorTodayBackground).Foreground(colorTodayText)
+        style = style.Background(colorTodayBackground).Foreground(tcell.ColorDefault)
+        // Ensure the day number renders white on the today background
+        label = fmt.Sprintf("[white]%s[::-]", label)
     }
 
 	// Placeholder for event count badge (mock)
