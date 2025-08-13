@@ -119,6 +119,26 @@ func (a *App) bindKeys() {
 		case '?':
 			ShowHelpModal(a.app, a.pages)
 			return nil
+        case 'h':
+            // vim-style left: previous day
+            a.uiState.SelectedDate = a.uiState.SelectedDate.AddDate(0, 0, -1)
+            a.refreshAll()
+            return nil
+        case 'l':
+            // vim-style right: next day
+            a.uiState.SelectedDate = a.uiState.SelectedDate.AddDate(0, 0, 1)
+            a.refreshAll()
+            return nil
+        case 'k':
+            // vim-style up: previous week
+            a.uiState.SelectedDate = a.uiState.SelectedDate.AddDate(0, 0, -7)
+            a.refreshAll()
+            return nil
+        case 'j':
+            // vim-style down: next week
+            a.uiState.SelectedDate = a.uiState.SelectedDate.AddDate(0, 0, 7)
+            a.refreshAll()
+            return nil
         case 'w':
             a.uiState.CurrentView = ViewWeek
             a.center.SwitchToPage("week")

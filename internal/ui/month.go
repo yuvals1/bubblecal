@@ -23,6 +23,14 @@ func NewMonthView(state *UIState) *MonthView {
 	mv := &MonthView{uiState: state, table: t}
 	mv.buildStatic()
 	mv.Refresh()
+    // Keep UI state in sync whenever selection changes via keyboard (including hjkl)
+    t.SetSelectionChangedFunc(func(row, column int) {
+        if cell := t.GetCell(row, column); cell != nil {
+            if ref, ok := cell.GetReference().(time.Time); ok {
+                mv.uiState.SelectedDate = ref
+            }
+        }
+    })
 	return mv
 }
 

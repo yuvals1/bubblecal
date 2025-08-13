@@ -12,7 +12,7 @@ func ShowHelpModal(app *tview.Application, pages *tview.Pages) {
     helpText += "  w: Week view\n"
     helpText += "\n"
     helpText += "[::b]Navigation[::-]\n"
-    helpText += "  Arrow keys: Move by day\n"
+    helpText += "  Arrow keys or h/j/k/l: Move by day (j/k = ±7 days)\n"
     helpText += "  g: Go to today\n"
     helpText += "\n"
     helpText += "[::b]Week view extras[::-]\n"
