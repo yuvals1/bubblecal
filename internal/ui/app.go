@@ -56,9 +56,9 @@ func NewApp() (*App, error) {
 	monthView := NewMonthView(uiState)
 	agendaView := NewAgendaView(uiState)
 
-	mainArea := tview.NewFlex().SetDirection(tview.FlexColumn).
-		AddItem(monthView.Primitive(), 0, 2, true).
-		AddItem(agendaView.Primitive(), 30, 0, false)
+    mainArea := tview.NewFlex().SetDirection(tview.FlexColumn).
+        AddItem(monthView.Primitive(), 0, 1, true).
+        AddItem(agendaView.Primitive(), 30, 0, false)
 
 	pages := tview.NewPages()
 	pages.AddPage("main", mainArea, true, true)
@@ -82,6 +82,16 @@ func NewApp() (*App, error) {
 	app.bindKeys()
     app.refreshAll()
 	application.SetRoot(root, true).EnableMouse(true)
+
+	// Keep the table's selection synchronized if the user moves it with arrow keys
+	monthView.table.SetSelectedFunc(func(row, column int) {
+		if cell := monthView.table.GetCell(row, column); cell != nil {
+			if ref, ok := cell.GetReference().(time.Time); ok {
+				uiState.SelectedDate = ref
+				app.refreshAll()
+			}
+		}
+	})
 	return app, nil
 }
 

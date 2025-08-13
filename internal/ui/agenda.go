@@ -14,8 +14,9 @@ type AgendaView struct {
 
 func NewAgendaView(state *UIState) *AgendaView {
 	l := tview.NewList()
-	l.ShowSecondaryText(false)
-	l.SetBorder(true).SetTitle("Agenda")
+    l.ShowSecondaryText(false)
+    l.SetBorder(true).SetTitle("Agenda")
+    l.SetWrapAround(false)
 	ag := &AgendaView{uiState: state, list: l}
 	ag.Refresh()
 	return ag

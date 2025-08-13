@@ -1,0 +1,15 @@
+# Build outputs
+simple-tui-cal
+*.exe
+*.out
+
+# Go
+bin/
+dist/
+coverage*
+*.test
+
+# Editor/OS
+.DS_Store
+.idea/
+.vscode/

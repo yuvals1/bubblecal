@@ -17,6 +17,9 @@ func NewMonthView(state *UIState) *MonthView {
 	t := tview.NewTable()
 	t.SetBorders(true)
 	t.SetFixed(1, 0)
+    // Allow the table to display a strong selection highlight.
+    t.SetSelectable(true, true)
+    t.SetSelectedStyle(tcell.StyleDefault.Background(tcell.ColorYellow).Foreground(tcell.ColorBlack).Bold(true))
 	mv := &MonthView{uiState: state, table: t}
 	mv.buildStatic()
 	mv.Refresh()
@@ -28,11 +31,12 @@ func (m *MonthView) Primitive() tview.Primitive { return m.table }
 func (m *MonthView) buildStatic() {
 	// Header row Sun..Sat
 	weekdays := []string{"Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"}
-	for c, name := range weekdays {
-		cell := tview.NewTableCell(fmt.Sprintf("[::b]%s", name)).
-			SetAlign(tview.AlignCenter)
-		m.table.SetCell(0, c, cell)
-	}
+    for c, name := range weekdays {
+        cell := tview.NewTableCell(fmt.Sprintf("[::b]%s", name)).
+            SetAlign(tview.AlignCenter).
+            SetExpansion(1)
+        m.table.SetCell(0, c, cell)
+    }
 }
 
 func (m *MonthView) Refresh() {
@@ -84,6 +88,9 @@ func (m *MonthView) Refresh() {
 		col = 0
 		row++
 	}
+
+    // Move the table's selection to the selected date for a clear hover effect
+    m.syncSelectionToTable()
 }
 
 func (m *MonthView) renderDayCell(date time.Time, otherMonth bool) *tview.TableCell {
@@ -104,11 +111,11 @@ func (m *MonthView) renderDayCell(date time.Time, otherMonth bool) *tview.TableC
 		style = style.Background(colorSelectedBackground).Foreground(colorSelectedText)
 	}
 
-	// Today underline
-	if sameDay(date, time.Now()) {
-		label = fmt.Sprintf("[::u]%s[::-]", label)
-		style = style.Underline(true).Foreground(colorTodayUnderline)
-	}
+    // Today underline (keep text color; just underline and add subtle accent)
+    if sameDay(date, time.Now()) {
+        label = fmt.Sprintf("[::u]%s[::-]", label)
+        style = style.Underline(true)
+    }
 
 	// Placeholder for event count badge (mock)
 	badge := ""
@@ -117,8 +124,27 @@ func (m *MonthView) renderDayCell(date time.Time, otherMonth bool) *tview.TableC
 	}
 
     cell := tview.NewTableCell(label + badge)
-    cell.SetAlign(tview.AlignLeft).SetStyle(style)
+    cell.SetAlign(tview.AlignLeft).SetStyle(style).SetExpansion(1)
+    cell.SetReference(date)
     return cell
+}
+
+// syncSelectionToTable finds the cell that matches the current selected date
+// and moves the tview.Table selection there so it gets the selected style.
+func (m *MonthView) syncSelectionToTable() {
+    // We know the month grid is 6 rows x 7 columns starting at row 1
+    for r := 1; r <= 6; r++ {
+        for c := 0; c <= 6; c++ {
+            if cell := m.table.GetCell(r, c); cell != nil {
+                if ref, ok := cell.GetReference().(time.Time); ok {
+                    if sameDay(ref, m.uiState.SelectedDate) {
+                        m.table.Select(r, c)
+                        return
+                    }
+                }
+            }
+        }
+    }
 }
 
 func sameDay(a, b time.Time) bool {

@@ -1,7 +1,8 @@
 package ui
 
 import (
-	"github.com/rivo/tview"
+    "github.com/gdamore/tcell/v2"
+    "github.com/rivo/tview"
 )
 
 func ShowHelpModal(app *tview.Application, pages *tview.Pages) {
@@ -14,12 +15,17 @@ func ShowHelpModal(app *tview.Application, pages *tview.Pages) {
 	helpText += "[::b]General[::-]\n"
 	helpText += "  ?: Help  q: Quit\n"
 
-	modal := tview.NewModal().
-		SetText(helpText).
-		AddButtons([]string{"Close"}).
-		SetDoneFunc(func(buttonIndex int, buttonLabel string) {
-			pages.RemovePage("help")
-		})
+    modal := tview.NewModal().
+        SetText(helpText).
+        AddButtons([]string{"Close"}).
+        SetDoneFunc(func(buttonIndex int, buttonLabel string) {
+            pages.RemovePage("help")
+        })
+
+    modal.SetBackgroundColor(tcell.ColorBlack)
+    modal.SetTextColor(tcell.ColorWhite)
+    modal.SetButtonBackgroundColor(tcell.ColorDarkCyan)
+    modal.SetButtonTextColor(tcell.ColorBlack)
 
 	pages.AddAndSwitchToPage("help", modal, true)
 	app.SetFocus(modal)
