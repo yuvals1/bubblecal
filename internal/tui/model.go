@@ -322,6 +322,18 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.focusedPane = CalendarPane
 			}
 			
+		case "enter":
+			// Enter focuses the agenda pane
+			if m.focusedPane == CalendarPane {
+				m.focusedPane = AgendaPane
+			}
+			
+		case "esc":
+			// Escape returns focus to calendar pane
+			if m.focusedPane == AgendaPane {
+				m.focusedPane = CalendarPane
+			}
+			
 		case " ":
 			// Cycle through views
 			switch m.currentView {
