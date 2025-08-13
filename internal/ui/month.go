@@ -156,7 +156,7 @@ func (m *MonthView) renderDayCell(date time.Time, otherMonth bool) *tview.TableC
 				if len(title) > 10 {
 					title = title[:9] + "…"
 				}
-				badge = fmt.Sprintf("\n[green]%s[::-]", title)
+				badge = fmt.Sprintf(" \n[green]%s[::-]", title)
 				hasAllDay = true
 				break
 			}
