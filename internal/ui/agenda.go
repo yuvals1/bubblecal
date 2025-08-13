@@ -86,9 +86,8 @@ func (a *AgendaView) Refresh() {
 		var label string
 		
 		if evt.IsAllDay() {
-			timeStr = "All day"
-			// Style all-day events with cyan color and bold
-			label = fmt.Sprintf("[cyan::b]%s[-::-] %s", timeStr, evt.Title)
+			// Green color for "All day" text
+			label = fmt.Sprintf("[green]All day[-] %s", evt.Title)
 		} else {
 			if evt.EndTime != "" {
 				timeStr = fmt.Sprintf("%s-%s", evt.StartTime, evt.EndTime)
