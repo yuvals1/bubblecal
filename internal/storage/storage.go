@@ -198,18 +198,18 @@ func UpdateEvent(date time.Time, oldEvent, newEvent *model.Event) error {
 	return nil
 }
 
-// sortEvents sorts events by time (all-day events go to the end)
+// sortEvents sorts events by time (all-day events go first)
 func sortEvents(events []*model.Event) {
 	sort.Slice(events, func(i, j int) bool {
-		// All-day events go to the end
+		// All-day events go first
 		if events[i].IsAllDay() && events[j].IsAllDay() {
 			return events[i].Title < events[j].Title // sort all-day by title
 		}
 		if events[i].IsAllDay() {
-			return false // i goes after j
+			return true // i goes before j
 		}
 		if events[j].IsAllDay() {
-			return true // i goes before j
+			return false // i goes after j
 		}
 		
 		// Both are timed events, sort by start time
