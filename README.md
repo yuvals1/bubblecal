@@ -46,9 +46,9 @@ go build -o bubblecal ./cmd/bubblecal/
 - **Switch panes**: `Tab`
 
 ### Customization
-- **Themes**: `s` (6 themes available)
 - **Toggle mini-month**: `m` (in week view)
 - **Move agenda**: `p` (right ↔ bottom)
+- **Themes**: `s` (6 themes available)
 
 ## Data Storage
 
