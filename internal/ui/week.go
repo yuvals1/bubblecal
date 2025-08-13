@@ -142,8 +142,16 @@ func (w *WeekView) syncSelectionToTable() {
 	if col > 7 {
 		col = 7
 	}
-	midRow := 1 + (12 - 8) // 12:00 row index
-	w.table.Select(midRow, col)
+	
+	// Select current hour if today is in this week, otherwise midday
+	row := 1 + (12 - 8) // Default: 12:00 row index
+	if sameDay(sel, time.Now()) {
+		currentHour := time.Now().Hour()
+		if currentHour >= 8 && currentHour <= 20 {
+			row = 1 + (currentHour - 8) // +1 for header row
+		}
+	}
+	w.table.Select(row, col)
 }
 
 func (w *WeekView) refreshMiniMonth() {

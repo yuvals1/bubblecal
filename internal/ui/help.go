@@ -44,7 +44,14 @@ func ShowHelpModal(app *tview.Application, pages *tview.Pages, currentView ViewK
         helpText += "  Ctrl+U/D: Previous/next day\n"
     }
     helpText += "  Tab: Toggle focus (calendar ↔ agenda)\n"
-    helpText += "  g: Go to today\n"
+    switch currentView {
+    case ViewMonth:
+        helpText += "  t: Go to today\n"
+    case ViewWeek:
+        helpText += "  t: Go to today (and current hour)\n"
+    case ViewDay:
+        helpText += "  t: Go to today (and current hour)\n"
+    }
     helpText += "\n"
     
     // Events section
