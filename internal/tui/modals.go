@@ -476,6 +476,7 @@ func (m *HelpModal) View() string {
 		helpText = append(helpText, "  h/l ←/→   Previous/next day")
 		helpText = append(helpText, "  j/k ↑/↓   Move between hours")
 		helpText = append(helpText, "  Ctrl+U/D  Previous/next week")
+		helpText = append(helpText, "  m         Toggle mini-month view")
 	case DayView:
 		helpText = append(helpText, "  h/l ←/→   Previous/next day")
 		helpText = append(helpText, "  j/k ↑/↓   Move between hours")

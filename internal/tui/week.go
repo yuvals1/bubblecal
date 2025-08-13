@@ -16,6 +16,7 @@ type WeekViewModel struct {
 	styles       *Styles
 	width        int
 	height       int
+	showMiniMonth bool
 }
 
 // NewWeekViewModel creates a new week view model
@@ -24,12 +25,17 @@ func NewWeekViewModel(selectedDate *time.Time, selectedHour *int, styles *Styles
 		selectedDate: selectedDate,
 		selectedHour: selectedHour,
 		styles:       styles,
+		showMiniMonth: true, // Show by default
 	}
 }
 
 func (w *WeekViewModel) SetSize(width, height int) {
 	w.width = width
 	w.height = height
+}
+
+func (w *WeekViewModel) SetShowMiniMonth(show bool) {
+	w.showMiniMonth = show
 }
 
 func (w *WeekViewModel) View() string {
@@ -183,9 +189,11 @@ func (w *WeekViewModel) View() string {
 		lines = append(lines, lipgloss.JoinHorizontal(lipgloss.Top, rowCells...))
 	}
 	
-	// Mini month at bottom
-	lines = append(lines, "")
-	lines = append(lines, w.renderMiniMonth())
+	// Mini month at bottom (if enabled)
+	if w.showMiniMonth {
+		lines = append(lines, "")
+		lines = append(lines, w.renderMiniMonth())
+	}
 	
 	return lipgloss.JoinVertical(lipgloss.Left, lines...)
 }

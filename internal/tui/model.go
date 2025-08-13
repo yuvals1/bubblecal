@@ -40,6 +40,7 @@ type Model struct {
 	// UI state
 	width        int
 	height       int
+	showMiniMonth bool // Toggle mini-month view in week view
 	
 	// Components
 	monthView    *MonthViewModel
@@ -85,12 +86,14 @@ func NewModel() *Model {
 		currentView:  MonthView,
 		focusedPane:  CalendarPane,
 		selectedHour: 12, // Default to noon
+		showMiniMonth: true, // Show mini-month by default
 		styles:       DefaultStyles(),
 	}
 	
 	// Initialize views
 	m.monthView = NewMonthViewModel(&m.selectedDate, m.styles)
 	m.weekView = NewWeekViewModel(&m.selectedDate, &m.selectedHour, m.styles)
+	m.weekView.SetShowMiniMonth(m.showMiniMonth)
 	m.dayView = NewDayViewModel(&m.selectedDate, &m.selectedHour, m.styles)
 	m.agendaView = NewAgendaViewModel(&m.selectedDate, m.styles)
 	
@@ -231,6 +234,14 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			modal.height = m.height
 			m.modalStack = append(m.modalStack, modal)
 			return m, modal.Init()
+			
+		case "m":
+			// Toggle mini-month view (only in week view)
+			if m.currentView == WeekView {
+				m.showMiniMonth = !m.showMiniMonth
+				// Update week view with the new setting
+				m.weekView.SetShowMiniMonth(m.showMiniMonth)
+			}
 			
 		case "?":
 			// Show help
