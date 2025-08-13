@@ -773,7 +773,7 @@ func (m *Model) View() string {
 		// Render calendar
 		calendarBox := calendarBorder.
 			Width(calendarWidth).
-			Height(calendarHeight).
+			MaxHeight(calendarHeight).
 			Render(lipgloss.NewStyle().Padding(0, 1).Render(viewTitle) + "\n" + calendarView)
 		
 		// Render agenda
@@ -796,7 +796,7 @@ func (m *Model) View() string {
 		// Render with borders
 		calendarBox := calendarBorder.
 			Width(calendarWidth).
-			Height(contentHeight).
+			MaxHeight(contentHeight).
 			Render(lipgloss.NewStyle().Padding(0, 1).Render(viewTitle) + "\n" + calendarView)
 		
 		agendaBox := agendaBorder.

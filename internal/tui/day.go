@@ -109,38 +109,8 @@ func (d *DayViewModel) View() string {
 	currentHour := time.Now().Hour()
 	isToday := sameDay(date, time.Now())
 	
-	// Calculate visible hours to fit screen
-	availableHeight := d.height - len(lines) - 2
-	hoursToShow := endHour - startHour + 1
-	if availableHeight < hoursToShow {
-		// Adjust range to show around selected hour
-		centerHour := *d.selectedHour
-		startHour = centerHour - availableHeight/2
-		if startHour < 6 {
-			startHour = 6
-		}
-		endHour = startHour + availableHeight - 1
-		if endHour > 22 {
-			endHour = 22
-			startHour = endHour - availableHeight + 1
-		}
-		// Ensure selected hour is visible
-		if *d.selectedHour < startHour {
-			startHour = *d.selectedHour
-			endHour = startHour + availableHeight - 1
-			if endHour > 22 {
-				endHour = 22
-			}
-		} else if *d.selectedHour > endHour {
-			endHour = *d.selectedHour
-			startHour = endHour - availableHeight + 1
-			if startHour < 6 {
-				startHour = 6
-			}
-		}
-	}
-	
-	for h := startHour; h <= endHour && len(lines) < d.height-2; h++ {
+	// Just show all hours - let the content flow naturally
+	for h := startHour; h <= endHour; h++ {
 		// Calculate row height based on number of events
 		rowHeight := 1
 		eventsText := ""
