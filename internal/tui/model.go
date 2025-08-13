@@ -43,6 +43,7 @@ type Model struct {
 	height       int
 	showMiniMonth bool // Toggle mini-month view in week view
 	agendaBottom  bool // Show agenda at bottom instead of right
+	currentTheme  ThemeType // Current UI theme
 	
 	// Components
 	monthView    *MonthViewModel
@@ -60,6 +61,19 @@ type Model struct {
 	styles       *Styles
 }
 
+// ThemeType represents different UI themes
+type ThemeType int
+
+const (
+	ThemeDefault ThemeType = iota
+	ThemeDark
+	ThemeLight
+	ThemeNeon
+	ThemeSolarized
+	ThemeNord
+	ThemeCount // Keep this last to track number of themes
+)
+
 // Styles holds all the lipgloss styles
 type Styles struct {
 	Base           lipgloss.Style
@@ -71,16 +85,92 @@ type Styles struct {
 	EventBadge     lipgloss.Style
 }
 
-func DefaultStyles() *Styles {
-	return &Styles{
-		Base:           lipgloss.NewStyle(),
-		Header:         lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color("15")).Padding(0, 1),
-		SelectedDate:   lipgloss.NewStyle().Background(lipgloss.Color("33")).Foreground(lipgloss.Color("0")).Bold(true),
-		TodayDate:      lipgloss.NewStyle().Background(lipgloss.Color("21")).Foreground(lipgloss.Color("15")),
-		OtherMonth:     lipgloss.NewStyle().Foreground(lipgloss.Color("240")),
-		Weekend:        lipgloss.NewStyle().Foreground(lipgloss.Color("245")),
-		EventBadge:     lipgloss.NewStyle().Foreground(lipgloss.Color("34")),
+func GetThemeName(theme ThemeType) string {
+	switch theme {
+	case ThemeDefault:
+		return "Default"
+	case ThemeDark:
+		return "Dark"
+	case ThemeLight:
+		return "Light"
+	case ThemeNeon:
+		return "Neon"
+	case ThemeSolarized:
+		return "Solarized"
+	case ThemeNord:
+		return "Nord"
+	default:
+		return "Unknown"
 	}
+}
+
+func GetStyles(theme ThemeType) *Styles {
+	switch theme {
+	case ThemeDark:
+		return &Styles{
+			Base:           lipgloss.NewStyle(),
+			Header:         lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color("250")).Padding(0, 1),
+			SelectedDate:   lipgloss.NewStyle().Background(lipgloss.Color("238")).Foreground(lipgloss.Color("15")).Bold(true),
+			TodayDate:      lipgloss.NewStyle().Background(lipgloss.Color("17")).Foreground(lipgloss.Color("15")),
+			OtherMonth:     lipgloss.NewStyle().Foreground(lipgloss.Color("237")),
+			Weekend:        lipgloss.NewStyle().Foreground(lipgloss.Color("242")),
+			EventBadge:     lipgloss.NewStyle().Foreground(lipgloss.Color("29")),
+		}
+	case ThemeLight:
+		return &Styles{
+			Base:           lipgloss.NewStyle(),
+			Header:         lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color("16")).Padding(0, 1),
+			SelectedDate:   lipgloss.NewStyle().Background(lipgloss.Color("39")).Foreground(lipgloss.Color("15")).Bold(true),
+			TodayDate:      lipgloss.NewStyle().Background(lipgloss.Color("220")).Foreground(lipgloss.Color("16")),
+			OtherMonth:     lipgloss.NewStyle().Foreground(lipgloss.Color("250")),
+			Weekend:        lipgloss.NewStyle().Foreground(lipgloss.Color("27")),
+			EventBadge:     lipgloss.NewStyle().Foreground(lipgloss.Color("28")),
+		}
+	case ThemeNeon:
+		return &Styles{
+			Base:           lipgloss.NewStyle(),
+			Header:         lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color("201")).Padding(0, 1),
+			SelectedDate:   lipgloss.NewStyle().Background(lipgloss.Color("201")).Foreground(lipgloss.Color("16")).Bold(true),
+			TodayDate:      lipgloss.NewStyle().Background(lipgloss.Color("51")).Foreground(lipgloss.Color("16")),
+			OtherMonth:     lipgloss.NewStyle().Foreground(lipgloss.Color("239")),
+			Weekend:        lipgloss.NewStyle().Foreground(lipgloss.Color("165")),
+			EventBadge:     lipgloss.NewStyle().Foreground(lipgloss.Color("226")),
+		}
+	case ThemeSolarized:
+		return &Styles{
+			Base:           lipgloss.NewStyle(),
+			Header:         lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color("136")).Padding(0, 1),
+			SelectedDate:   lipgloss.NewStyle().Background(lipgloss.Color("33")).Foreground(lipgloss.Color("230")).Bold(true),
+			TodayDate:      lipgloss.NewStyle().Background(lipgloss.Color("64")).Foreground(lipgloss.Color("230")),
+			OtherMonth:     lipgloss.NewStyle().Foreground(lipgloss.Color("241")),
+			Weekend:        lipgloss.NewStyle().Foreground(lipgloss.Color("37")),
+			EventBadge:     lipgloss.NewStyle().Foreground(lipgloss.Color("125")),
+		}
+	case ThemeNord:
+		return &Styles{
+			Base:           lipgloss.NewStyle(),
+			Header:         lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color("109")).Padding(0, 1),
+			SelectedDate:   lipgloss.NewStyle().Background(lipgloss.Color("67")).Foreground(lipgloss.Color("231")).Bold(true),
+			TodayDate:      lipgloss.NewStyle().Background(lipgloss.Color("96")).Foreground(lipgloss.Color("231")),
+			OtherMonth:     lipgloss.NewStyle().Foreground(lipgloss.Color("60")),
+			Weekend:        lipgloss.NewStyle().Foreground(lipgloss.Color("103")),
+			EventBadge:     lipgloss.NewStyle().Foreground(lipgloss.Color("110")),
+		}
+	default: // ThemeDefault
+		return &Styles{
+			Base:           lipgloss.NewStyle(),
+			Header:         lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color("15")).Padding(0, 1),
+			SelectedDate:   lipgloss.NewStyle().Background(lipgloss.Color("33")).Foreground(lipgloss.Color("0")).Bold(true),
+			TodayDate:      lipgloss.NewStyle().Background(lipgloss.Color("21")).Foreground(lipgloss.Color("15")),
+			OtherMonth:     lipgloss.NewStyle().Foreground(lipgloss.Color("240")),
+			Weekend:        lipgloss.NewStyle().Foreground(lipgloss.Color("245")),
+			EventBadge:     lipgloss.NewStyle().Foreground(lipgloss.Color("34")),
+		}
+	}
+}
+
+func DefaultStyles() *Styles {
+	return GetStyles(ThemeDefault)
 }
 
 // NewModel creates a new application model
@@ -97,8 +187,9 @@ func NewModel() *Model {
 		selectedHour: 12, // Default to noon
 		showMiniMonth: cfg.ShowMiniMonth,
 		agendaBottom:  cfg.AgendaBottom,
+		currentTheme:  ThemeType(cfg.Theme),
 		config:       cfg,
-		styles:       DefaultStyles(),
+		styles:       GetStyles(ThemeType(cfg.Theme)),
 	}
 	
 	// Initialize views
@@ -266,6 +357,16 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			// Update view sizes
 			m.updateViewSizes()
 			
+		case "s":
+			// Cycle through themes
+			m.currentTheme = (m.currentTheme + 1) % ThemeCount
+			m.styles = GetStyles(m.currentTheme)
+			// Update all views with new styles
+			m.updateViewStyles()
+			// Save the preference
+			m.config.Theme = int(m.currentTheme)
+			m.config.Save()
+			
 		case "?":
 			// Show help
 			modal := NewHelpModal(m.currentView, m.focusedPane, m.styles)
@@ -384,6 +485,36 @@ func (m *Model) handleAgendaNavigation(msg tea.KeyMsg) tea.Cmd {
 		return loadEventsCmd(m.selectedDate)
 	}
 	return nil
+}
+
+func (m *Model) updateViewStyles() {
+	// Update all views with new styles
+	if m.monthView != nil {
+		width, height := m.monthView.width, m.monthView.height
+		m.monthView = NewMonthViewModel(&m.selectedDate, m.styles)
+		m.monthView.SetSize(width, height)
+	}
+	if m.weekView != nil {
+		width, height := m.weekView.width, m.weekView.height
+		showMiniMonth := m.weekView.showMiniMonth
+		m.weekView = NewWeekViewModel(&m.selectedDate, &m.selectedHour, m.styles)
+		m.weekView.SetShowMiniMonth(showMiniMonth)
+		m.weekView.SetSize(width, height)
+	}
+	if m.dayView != nil {
+		width, height := m.dayView.width, m.dayView.height
+		m.dayView = NewDayViewModel(&m.selectedDate, &m.selectedHour, m.styles)
+		m.dayView.SetSize(width, height)
+	}
+	if m.agendaView != nil {
+		width, height := m.agendaView.width, m.agendaView.height
+		events := m.agendaView.events
+		selectedIndex := m.agendaView.selectedIndex
+		m.agendaView = NewAgendaViewModel(&m.selectedDate, m.styles)
+		m.agendaView.SetEvents(events)
+		m.agendaView.selectedIndex = selectedIndex
+		m.agendaView.SetSize(width, height)
+	}
 }
 
 func (m *Model) updateViewSizes() {
@@ -544,7 +675,7 @@ func (m *Model) View() string {
 }
 
 func (m *Model) renderHeader() string {
-	headerText := " " + m.selectedDate.Format("Jan 2006") + " · Simple TUI Cal"
+	headerText := " " + m.selectedDate.Format("Jan 2006") + " · Simple TUI Cal · " + GetThemeName(m.currentTheme)
 	return m.styles.Header.Width(m.width).Render(headerText)
 }
 

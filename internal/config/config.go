@@ -10,6 +10,7 @@ import (
 type Config struct {
 	ShowMiniMonth bool   `json:"show_mini_month"`
 	AgendaBottom  bool   `json:"agenda_bottom"`
+	Theme         int    `json:"theme"`
 }
 
 // DefaultConfig returns the default configuration
@@ -17,6 +18,7 @@ func DefaultConfig() *Config {
 	return &Config{
 		ShowMiniMonth: true,
 		AgendaBottom:  false, // Default to right side
+		Theme:         0,     // Default theme
 	}
 }
 
