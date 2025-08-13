@@ -24,6 +24,9 @@ type ListViewModel struct {
 	events        map[string][]*model.Event // Events grouped by date
 	dateOrder     []time.Time // Ordered list of dates
 	flatEvents    []EventWithDate // Flattened list for navigation
+	// Jump mode
+	jumpMode      bool
+	jumpKeys      []string
 }
 
 // EventWithDate wraps an event with its date for list navigation
@@ -113,6 +116,22 @@ func (l *ListViewModel) GoToBottom() {
 		l.selectedIndex = len(l.flatEvents) - 1
 		l.ensureVisible()
 	}
+}
+
+func (l *ListViewModel) SetJumpMode(jumpMode bool, jumpKeys []string) {
+	l.jumpMode = jumpMode
+	l.jumpKeys = jumpKeys
+}
+
+func (l *ListViewModel) JumpToIndex(index int) {
+	if index >= 0 && index < len(l.flatEvents) {
+		l.selectedIndex = index
+		l.ensureVisible()
+	}
+}
+
+func (l *ListViewModel) GetEventCount() int {
+	return len(l.flatEvents)
 }
 
 func (l *ListViewModel) PageUp() {
@@ -232,7 +251,21 @@ func (l *ListViewModel) View() string {
 			// Render each event
 			for _, evt := range events {
 				isSelected := eventIndex == l.selectedIndex
-				allLines = append(allLines, l.renderEventLine(evt, date, isSelected))
+				line := l.renderEventLine(evt, date, isSelected)
+				
+				// Add jump key overlay if in jump mode
+				if l.jumpMode && eventIndex < len(l.jumpKeys) {
+					jumpKey := l.jumpKeys[eventIndex]
+					jumpStyle := lipgloss.NewStyle().
+						Background(lipgloss.Color("196")).
+						Foreground(lipgloss.Color("15")).
+						Bold(true).
+						Padding(0, 1)
+					jumpOverlay := jumpStyle.Render(jumpKey)
+					line = jumpOverlay + " " + line
+				}
+				
+				allLines = append(allLines, line)
 				eventIndex++
 			}
 		}

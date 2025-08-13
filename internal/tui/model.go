@@ -368,10 +368,8 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			cmds = append(cmds, loadEventsCmd(m.selectedDate))
 			
 		case "f":
-			// Enter jump mode (only for calendar pane)
-			if m.focusedPane == CalendarPane {
-				m.initJumpMode()
-			}
+			// Enter jump mode
+			m.initJumpMode()
 			
 		case "a":
 			// Add new event
@@ -852,6 +850,12 @@ func (m *Model) initJumpMode() {
 	m.jumpKeys = []string{}
 	m.jumpTargets = []time.Time{}
 	
+	// Check if we're in agenda pane
+	if m.focusedPane == AgendaPane {
+		m.generateAgendaJumpTargets()
+		return
+	}
+	
 	// Generate jump targets based on current view
 	switch m.currentView {
 	case MonthView:
@@ -860,6 +864,8 @@ func (m *Model) initJumpMode() {
 		m.generateWeekJumpTargets()
 	case DayView:
 		m.generateDayJumpTargets()
+	case ListView:
+		m.generateListJumpTargets()
 	}
 }
 
@@ -869,21 +875,36 @@ func (m *Model) handleJumpMode(key string) *Model {
 		m.jumpMode = false
 		m.jumpKeys = nil
 		m.jumpTargets = nil
+		m.agendaView.SetJumpMode(false, nil)
+		m.listView.SetJumpMode(false, nil)
 		return m
 	}
 	
 	// Check if key matches any jump target
 	for i, jumpKey := range m.jumpKeys {
 		if jumpKey == key {
-			// Jump to the target date
-			if i < len(m.jumpTargets) {
-				m.selectedDate = m.jumpTargets[i]
-				m.loadEvents()
+			// Handle different jump types
+			if m.focusedPane == AgendaPane {
+				// Jump to agenda item
+				if i < len(m.events) {
+					m.agendaView.JumpToIndex(i)
+				}
+			} else if m.currentView == ListView {
+				// Jump to list item
+				m.listView.JumpToIndex(i)
+			} else {
+				// Jump to calendar date
+				if i < len(m.jumpTargets) {
+					m.selectedDate = m.jumpTargets[i]
+					m.loadEvents()
+				}
 			}
 			// Exit jump mode
 			m.jumpMode = false
 			m.jumpKeys = nil
 			m.jumpTargets = nil
+			m.agendaView.SetJumpMode(false, nil)
+			m.listView.SetJumpMode(false, nil)
 			return m
 		}
 	}
@@ -930,4 +951,31 @@ func (m *Model) getStartOfWeek(date time.Time) time.Time {
 	// Get start of week (Sunday)
 	weekday := int(date.Weekday())
 	return date.AddDate(0, 0, -weekday)
+}
+
+func (m *Model) generateAgendaJumpTargets() {
+	// Generate jump keys for visible agenda items
+	keyIndex := 0
+	for range m.events {
+		if keyIndex < len(JUMP_KEYS) {
+			m.jumpKeys = append(m.jumpKeys, JUMP_KEYS[keyIndex])
+			keyIndex++
+		}
+	}
+	// Pass jump keys to agenda view
+	m.agendaView.SetJumpMode(true, m.jumpKeys)
+}
+
+func (m *Model) generateListJumpTargets() {
+	// Generate jump keys for visible list items
+	m.listView.LoadEvents() // Ensure events are loaded
+	eventCount := m.listView.GetEventCount()
+	
+	keyIndex := 0
+	for i := 0; i < eventCount && keyIndex < len(JUMP_KEYS); i++ {
+		m.jumpKeys = append(m.jumpKeys, JUMP_KEYS[keyIndex])
+		keyIndex++
+	}
+	// Pass jump keys to list view
+	m.listView.SetJumpMode(true, m.jumpKeys)
 }

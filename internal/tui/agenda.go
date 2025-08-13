@@ -20,6 +20,9 @@ type AgendaViewModel struct {
 	height        int
 	scrollOffset  int
 	config        *config.Config // Added to access categories
+	// Jump mode
+	jumpMode      bool
+	jumpKeys      []string
 }
 
 // NewAgendaViewModel creates a new agenda view model
@@ -69,6 +72,18 @@ func (a *AgendaViewModel) GoToTop() {
 func (a *AgendaViewModel) GoToBottom() {
 	if len(a.events) > 0 {
 		a.selectedIndex = len(a.events) - 1
+		a.ensureVisible()
+	}
+}
+
+func (a *AgendaViewModel) SetJumpMode(jumpMode bool, jumpKeys []string) {
+	a.jumpMode = jumpMode
+	a.jumpKeys = jumpKeys
+}
+
+func (a *AgendaViewModel) JumpToIndex(index int) {
+	if index >= 0 && index < len(a.events) {
+		a.selectedIndex = index
 		a.ensureVisible()
 	}
 }
@@ -127,6 +142,19 @@ func (a *AgendaViewModel) View() string {
 		for i := a.scrollOffset; i < endIndex; i++ {
 			evt := a.events[i]
 			line := a.renderEventLine(evt, i == a.selectedIndex)
+			
+			// Add jump key overlay if in jump mode
+			if a.jumpMode && i < len(a.jumpKeys) {
+				jumpKey := a.jumpKeys[i]
+				jumpStyle := lipgloss.NewStyle().
+					Background(lipgloss.Color("196")).
+					Foreground(lipgloss.Color("15")).
+					Bold(true).
+					Padding(0, 1)
+				jumpOverlay := jumpStyle.Render(jumpKey)
+				line = jumpOverlay + " " + line
+			}
+			
 			lines = append(lines, line)
 		}
 		
