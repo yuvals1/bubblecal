@@ -72,6 +72,40 @@ func (w *WeekViewModel) View() string {
 	lines = append(lines, lipgloss.JoinHorizontal(lipgloss.Top, headerCells...))
 	lines = append(lines, strings.Repeat("─", w.width-4))
 	
+	// All-day events row
+	var allDayRow []string
+	allDayLabel := lipgloss.NewStyle().
+		Width(8).
+		Align(lipgloss.Right).
+		Foreground(lipgloss.Color("240")).
+		Render("All Day ")
+	allDayRow = append(allDayRow, allDayLabel)
+	
+	for d := 0; d < 7; d++ {
+		date := weekStart.AddDate(0, 0, d)
+		allDayEvents := w.getAllDayEvents(date)
+		
+		cellStyle := lipgloss.NewStyle().
+			Width(colWidth).
+			Height(1).
+			Padding(0, 1)
+		
+		// Subtle background for today
+		if sameDay(date, time.Now()) {
+			cellStyle = cellStyle.Background(lipgloss.Color("234"))
+		}
+		
+		// Highlight selected date's all-day events
+		if sameDay(date, *w.selectedDate) {
+			cellStyle = cellStyle.Foreground(w.styles.EventBadge.GetForeground())
+		}
+		
+		allDayRow = append(allDayRow, cellStyle.Render(allDayEvents))
+	}
+	
+	lines = append(lines, lipgloss.JoinHorizontal(lipgloss.Top, allDayRow...))
+	lines = append(lines, strings.Repeat("─", w.width-4))
+	
 	// Hour rows (8:00 - 20:00)
 	startHour := 8
 	endHour := 20
@@ -129,6 +163,30 @@ func (w *WeekViewModel) GetSelectedHour() string {
 		return fmt.Sprintf("%02d:00", *w.selectedHour)
 	}
 	return ""  
+}
+
+func (w *WeekViewModel) getAllDayEvents(date time.Time) string {
+	events, _ := storage.LoadDayEvents(date)
+	
+	var allDayTitles []string
+	for _, evt := range events {
+		if evt.IsAllDay() {
+			title := evt.Title
+			// Calculate max length based on column width
+			colWidth := (w.width - 10) / 7
+			maxLen := colWidth - 4 // Account for padding
+			if len(title) > maxLen && maxLen > 3 {
+				title = title[:maxLen-1] + "…"
+			}
+			allDayTitles = append(allDayTitles, title)
+		}
+	}
+	
+	if len(allDayTitles) > 0 {
+		// Join with separator if multiple all-day events
+		return strings.Join(allDayTitles, " | ")
+	}
+	return ""
 }
 
 func (w *WeekViewModel) getHourEvents(date time.Time, hour int) string {
