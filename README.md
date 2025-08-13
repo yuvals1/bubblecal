@@ -8,10 +8,10 @@ A fast, keyboard-driven terminal calendar built with Bubble Tea.
 ## Screenshots
 
 <div align="center">
-  <img src="examples/screenshots/Screenshot 2025-08-13 at 20.37.16.png" width="49%" alt="Month View">
+  <img src="examples/screenshots/Screenshot 2025-08-13 at 20.45.21.png" width="49%" alt="Month View">
   <img src="examples/screenshots/Screenshot 2025-08-13 at 20.37.27.png" width="49%" alt="Week View">
-  <img src="examples/screenshots/Screenshot 2025-08-13 at 20.37.41.png" width="49%" alt="Day View">
-  <img src="examples/screenshots/Screenshot 2025-08-13 at 20.38.47.png" width="49%" alt="Event Modal">
+  <img src="examples/screenshots/Screenshot 2025-08-13 at 20.45.28.png" width="49%" alt="Day View">
+  <img src="examples/screenshots/Screenshot 2025-08-13 at 20.46.07.png" width="49%" alt="Event Modal">
 </div>
 
 ## Features
