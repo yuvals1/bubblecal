@@ -22,6 +22,7 @@ type EventModal struct {
 	styles       *Styles
 	width        int
 	height       int
+	errorMsg     string // Display error messages
 }
 
 const (
@@ -137,6 +138,8 @@ func (m *EventModal) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				// Save button
 				if err := m.saveEvent(); err == nil {
 					return m, func() tea.Msg { return ModalCloseMsg(true) }
+				} else {
+					m.errorMsg = err.Error()
 				}
 			}
 			
@@ -249,8 +252,15 @@ func (m *EventModal) View() string {
 	fields = append(fields, m.inputs[inputDescription].View())
 	fields = append(fields, "")
 	
+	// Error message if any
+	if m.errorMsg != "" {
+		errorStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("196")).Bold(true)
+		fields = append(fields, errorStyle.Render("Error: " + m.errorMsg))
+		fields = append(fields, "")
+	}
+	
 	// Buttons
-	saveBtn := "[ Save ]"
+	saveBtn := "[ Save (Enter) ]"
 	cancelBtn := "[ Cancel (Esc) ]"
 	if m.focusIndex == len(m.inputs) {
 		saveBtn = lipgloss.NewStyle().

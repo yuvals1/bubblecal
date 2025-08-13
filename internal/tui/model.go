@@ -226,12 +226,18 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				}
 			}
 			modal := NewEventModalWithTime(m.selectedDate, nil, defaultTime, m.styles)
+			// Set modal window size
+			modal.width = m.width
+			modal.height = m.height
 			m.modalStack = append(m.modalStack, modal)
 			return m, modal.Init()
 			
 		case "?":
 			// Show help
 			modal := NewHelpModal(m.currentView, m.focusedPane, m.styles)
+			// Set modal window size
+			modal.width = m.width
+			modal.height = m.height
 			m.modalStack = append(m.modalStack, modal)
 			return m, nil
 			
@@ -317,6 +323,9 @@ func (m *Model) handleAgendaNavigation(msg tea.KeyMsg) tea.Cmd {
 		if idx := m.agendaView.GetSelectedIndex(); idx >= 0 && idx < len(m.events) {
 			event := m.events[idx]
 			modal := NewEventModal(m.selectedDate, event, m.styles)
+			// Set modal window size
+			modal.width = m.width
+			modal.height = m.height
 			m.modalStack = append(m.modalStack, modal)
 			return modal.Init()
 		}
@@ -325,6 +334,9 @@ func (m *Model) handleAgendaNavigation(msg tea.KeyMsg) tea.Cmd {
 		if idx := m.agendaView.GetSelectedIndex(); idx >= 0 && idx < len(m.events) {
 			event := m.events[idx]
 			modal := NewDeleteModal(m.selectedDate, event, idx, m.styles)
+			// Set modal window size
+			modal.width = m.width
+			modal.height = m.height
 			m.modalStack = append(m.modalStack, modal)
 			return nil
 		}
