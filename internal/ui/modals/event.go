@@ -12,15 +12,20 @@ import (
 )
 
 // ShowNewEventModal displays a form to create a new event
-func ShowNewEventModal(app *tview.Application, pages *tview.Pages, date time.Time, onComplete func()) {
+func ShowNewEventModal(app *tview.Application, pages *tview.Pages, date time.Time, defaultStartTime string, onComplete func()) {
 	form := tview.NewForm()
 	form.SetBorder(true)
 	form.SetTitle(fmt.Sprintf(" New Event - %s ", date.Format("Jan 2, 2006")))
 	form.SetTitleAlign(tview.AlignCenter)
 	
+	// Use provided start time or default to 09:00
+	if defaultStartTime == "" {
+		defaultStartTime = "09:00"
+	}
+	
 	// Form fields
 	form.AddInputField("Title", "", 40, nil, nil)
-	form.AddInputField("Start Time", "09:00", 10, nil, nil)
+	form.AddInputField("Start Time", defaultStartTime, 10, nil, nil)
 	form.AddInputField("End Time (optional)", "", 10, nil, nil)
 	form.AddCheckbox("All Day", false, nil)
 	form.AddInputField("Categories (comma-separated)", "", 30, nil, nil)

@@ -186,7 +186,12 @@ func (a *App) bindKeys() {
 			return nil
 		case 'a':
 			// Add new event
-			modals.ShowNewEventModal(a.app, a.pages, a.uiState.SelectedDate, func() {
+			defaultTime := ""
+			// If in week view and calendar is focused, get the selected hour
+			if a.uiState.CurrentView == ViewWeek && a.uiState.FocusedPane == PaneMonth {
+				defaultTime = a.weekView.GetSelectedHour()
+			}
+			modals.ShowNewEventModal(a.app, a.pages, a.uiState.SelectedDate, defaultTime, func() {
 				a.refreshAll()
 			})
 			return nil

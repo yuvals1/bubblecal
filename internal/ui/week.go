@@ -41,6 +41,19 @@ func NewWeekView(state *UIState) *WeekView {
 
 func (w *WeekView) Primitive() tview.Primitive { return w.root }
 
+// GetSelectedHour returns the hour of the currently selected cell in week view
+func (w *WeekView) GetSelectedHour() string {
+	row, _ := w.table.GetSelection()
+	// Row 0 is header, rows 1+ are hours starting at 8am
+	if row > 0 {
+		hour := 8 + (row - 1)  // Start hour is 8, row 1 = 8am
+		if hour >= 8 && hour <= 20 {
+			return fmt.Sprintf("%02d:00", hour)
+		}
+	}
+	return ""  // Return empty if not on a valid hour row
+}
+
 // SetFocused updates the visual style when week view gains/loses focus
 func (w *WeekView) SetFocused(focused bool) {
 	if focused {
