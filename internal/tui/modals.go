@@ -693,7 +693,7 @@ func (m *HelpModal) View() string {
 	helpText = append(helpText, "")
 	
 	helpText = append(helpText, lipgloss.NewStyle().Bold(true).Render("Views:"))
-	helpText = append(helpText, "  Space     Cycle views (Month→Week→Day)")
+	helpText = append(helpText, "  ] / [     Next/Previous view (Month→Week→Day→List)")
 	helpText = append(helpText, "")
 	
 	helpText = append(helpText, lipgloss.NewStyle().Bold(true).Render("Navigation:"))

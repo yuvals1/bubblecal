@@ -326,8 +326,8 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.focusedPane = CalendarPane
 			}
 			
-		case " ":
-			// Cycle through views
+		case "]":
+			// Cycle forward through views
 			switch m.currentView {
 			case MonthView:
 				m.currentView = WeekView
@@ -354,6 +354,32 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.currentView = ListView
 			case ListView:
 				m.currentView = MonthView
+			}
+			
+		case "[":
+			// Cycle backward through views
+			switch m.currentView {
+			case MonthView:
+				m.currentView = ListView
+			case WeekView:
+				m.currentView = MonthView
+			case DayView:
+				m.currentView = WeekView
+				// Set selected hour to noon
+				m.selectedHour = 12
+			case ListView:
+				m.currentView = DayView
+				// Set selected hour for day view
+				if sameDay(m.selectedDate, time.Now()) {
+					hour := time.Now().Hour()
+					if hour >= 6 && hour <= 22 {
+						m.selectedHour = hour
+					} else {
+						m.selectedHour = 12
+					}
+				} else {
+					m.selectedHour = 12
+				}
 			}
 			
 		case "t", ".":
