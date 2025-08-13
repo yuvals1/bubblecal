@@ -113,16 +113,29 @@ func (d *DayViewModel) View() string {
 	availableHeight := d.height - len(lines) - 2
 	hoursToShow := endHour - startHour + 1
 	if availableHeight < hoursToShow {
-		// Adjust range to show around current time if today
-		if isToday {
-			startHour = currentHour - availableHeight/2
-			if startHour < 6 {
-				startHour = 6
-			}
+		// Adjust range to show around selected hour
+		centerHour := *d.selectedHour
+		startHour = centerHour - availableHeight/2
+		if startHour < 6 {
+			startHour = 6
+		}
+		endHour = startHour + availableHeight - 1
+		if endHour > 22 {
+			endHour = 22
+			startHour = endHour - availableHeight + 1
+		}
+		// Ensure selected hour is visible
+		if *d.selectedHour < startHour {
+			startHour = *d.selectedHour
 			endHour = startHour + availableHeight - 1
 			if endHour > 22 {
 				endHour = 22
-				startHour = endHour - availableHeight + 1
+			}
+		} else if *d.selectedHour > endHour {
+			endHour = *d.selectedHour
+			startHour = endHour - availableHeight + 1
+			if startHour < 6 {
+				startHour = 6
 			}
 		}
 	}

@@ -351,9 +351,9 @@ func (l *ListViewModel) renderDateHeader(date time.Time) string {
 
 func (l *ListViewModel) renderEventLine(evt *model.Event, date time.Time, selected bool) string {
 	// Get category color
-	categoryColor := "#808080"
+	categoryColor := lipgloss.Color("15") // Default white
 	if l.config != nil && evt.Category != "" {
-		categoryColor = l.config.GetCategoryColor(evt.Category)
+		categoryColor = lipgloss.Color(l.config.GetCategoryColor(evt.Category))
 	}
 	
 	// Build event time string
@@ -366,15 +366,14 @@ func (l *ListViewModel) renderEventLine(evt *model.Event, date time.Time, select
 		timeStr = evt.StartTime
 	}
 	
-	// Category indicator
-	categoryDot := lipgloss.NewStyle().
-		Foreground(lipgloss.Color(categoryColor)).
-		Render("●")
-	
 	// Time styling
 	timeStyle := lipgloss.NewStyle().
 		Foreground(lipgloss.Color("245")).
 		Width(13) // Fixed width for alignment
+	
+	// Title styling with category color
+	titleStyle := lipgloss.NewStyle().
+		Foreground(categoryColor)
 	
 	// Title and category
 	titleStr := evt.Title
@@ -383,7 +382,7 @@ func (l *ListViewModel) renderEventLine(evt *model.Event, date time.Time, select
 	}
 	
 	// Build the complete line
-	line := fmt.Sprintf("%s %s %s", categoryDot, timeStyle.Render(timeStr), titleStr)
+	line := fmt.Sprintf("%s %s", timeStyle.Render(timeStr), titleStyle.Render(titleStr))
 	
 	// Apply selection styling
 	lineStyle := lipgloss.NewStyle().

@@ -280,8 +280,13 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			if m.lastKey == "g" {
 				// gg - go to top
 				if m.focusedPane == CalendarPane {
-					if m.currentView == ListView {
+					switch m.currentView {
+					case ListView:
 						m.listView.GoToTop()
+					case WeekView:
+						m.selectedHour = 8 // First hour in week view
+					case DayView:
+						m.selectedHour = 6 // First hour in day view
 					}
 				} else {
 					// Agenda pane
@@ -423,8 +428,13 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case "G":
 			// Go to bottom
 			if m.focusedPane == CalendarPane {
-				if m.currentView == ListView {
+				switch m.currentView {
+				case ListView:
 					m.listView.GoToBottom()
+				case WeekView:
+					m.selectedHour = 20 // Last hour in week view
+				case DayView:
+					m.selectedHour = 22 // Last hour in day view
 				}
 			} else {
 				// Agenda pane

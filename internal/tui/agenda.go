@@ -191,38 +191,33 @@ func (a *AgendaViewModel) View() string {
 }
 
 func (a *AgendaViewModel) renderEventLine(evt *model.Event, selected bool) string {
-	var label string
-	
 	// Get category color
-	categoryColor := "#808080" // Default gray
+	categoryColor := lipgloss.Color("15") // Default white
 	if a.config != nil && evt.Category != "" {
-		categoryColor = a.config.GetCategoryColor(evt.Category)
+		categoryColor = lipgloss.Color(a.config.GetCategoryColor(evt.Category))
 	}
 	
-	// Create category indicator
-	categoryIndicator := ""
-	if evt.Category != "" {
-		categoryIndicator = lipgloss.NewStyle().
-			Foreground(lipgloss.Color(categoryColor)).
-			Render("● ")
-	}
-	
+	var label string
 	if evt.IsAllDay() {
-		// Use green for all-day text
+		// All day event
 		allDayText := lipgloss.NewStyle().
-			Foreground(lipgloss.Color("34")).
+			Foreground(lipgloss.Color("245")).
 			Render("All day")
-		label = fmt.Sprintf("%s%s %s", categoryIndicator, allDayText, evt.Title)
+		titleText := lipgloss.NewStyle().
+			Foreground(categoryColor).
+			Render(evt.Title)
+		label = fmt.Sprintf("%s %s", allDayText, titleText)
 	} else {
+		// Timed event
 		var timeStr string
 		if evt.EndTime != "" {
 			timeStr = fmt.Sprintf("%s-%s", evt.StartTime, evt.EndTime)
 		} else {
 			timeStr = evt.StartTime
 		}
-		// Use dimmer color for time
 		timeStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("245"))
-		label = fmt.Sprintf("%s%s %s", categoryIndicator, timeStyle.Render(timeStr), evt.Title)
+		titleStyle := lipgloss.NewStyle().Foreground(categoryColor)
+		label = fmt.Sprintf("%s %s", timeStyle.Render(timeStr), titleStyle.Render(evt.Title))
 	}
 	
 	// Build the final string with selection indicator

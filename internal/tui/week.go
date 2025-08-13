@@ -133,6 +133,43 @@ func (w *WeekViewModel) View() string {
 	startHour := 8
 	endHour := 20
 	
+	// Calculate available height for hour rows
+	availableHeight := w.height - len(lines) - 4 // Account for header, borders, etc
+	if w.showMiniMonth {
+		availableHeight -= 8 // Mini month takes space
+	}
+	
+	// If not enough space, show a window around selected hour
+	hoursToShow := endHour - startHour + 1
+	if availableHeight < hoursToShow {
+		// Center view around selected hour
+		centerHour := *w.selectedHour
+		visibleHours := availableHeight
+		if visibleHours < 1 {
+			visibleHours = 1
+		}
+		
+		startHour = centerHour - visibleHours/2
+		if startHour < 8 {
+			startHour = 8
+		}
+		endHour = startHour + visibleHours - 1
+		if endHour > 20 {
+			endHour = 20
+			startHour = endHour - visibleHours + 1
+			if startHour < 8 {
+				startHour = 8
+			}
+		}
+		
+		// Ensure selected hour is visible
+		if *w.selectedHour < startHour {
+			startHour = *w.selectedHour
+		} else if *w.selectedHour > endHour {
+			endHour = *w.selectedHour
+		}
+	}
+	
 	for h := startHour; h <= endHour; h++ {
 		var rowCells []string
 		
