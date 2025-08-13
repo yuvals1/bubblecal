@@ -5,6 +5,7 @@ import (
 	"bubblecal/internal/model"
 	"bubblecal/internal/storage"
 	"fmt"
+	"strings"
 	"time"
 
 	tea "github.com/charmbracelet/bubbletea"
@@ -939,7 +940,55 @@ func (m *Model) renderHeader() string {
 		headerText += " · " + yankStatus
 	}
 	
-	return m.styles.Header.Width(m.width).Render(headerText)
+	// Create view indicator
+	views := []string{"Month", "Week", "Day", "List"}
+	viewIndicator := ""
+	for i, v := range views {
+		if i > 0 {
+			viewIndicator += " "
+		}
+		
+		// Check if this is the current view
+		isActive := false
+		switch v {
+		case "Month":
+			isActive = m.currentView == MonthView
+		case "Week":
+			isActive = m.currentView == WeekView
+		case "Day":
+			isActive = m.currentView == DayView
+		case "List":
+			isActive = m.currentView == ListView
+		}
+		
+		if isActive {
+			// Highlight active view
+			viewIndicator += lipgloss.NewStyle().
+				Background(lipgloss.Color("39")).
+				Foreground(lipgloss.Color("15")).
+				Bold(true).
+				Padding(0, 1).
+				Render(v)
+		} else {
+			// Inactive view
+			viewIndicator += lipgloss.NewStyle().
+				Foreground(lipgloss.Color("240")).
+				Padding(0, 1).
+				Render(v)
+		}
+	}
+	
+	// Calculate padding to right-align view indicator
+	headerLen := lipgloss.Width(headerText)
+	viewLen := lipgloss.Width(viewIndicator)
+	padding := m.width - headerLen - viewLen - 2
+	if padding < 1 {
+		padding = 1
+	}
+	
+	fullHeader := headerText + strings.Repeat(" ", padding) + viewIndicator
+	
+	return m.styles.Header.Width(m.width).Render(fullHeader)
 }
 
 // Helper functions
