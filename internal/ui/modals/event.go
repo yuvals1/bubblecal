@@ -99,6 +99,15 @@ func ShowNewEventModal(app *tview.Application, pages *tview.Pages, date time.Tim
 		pages.RemovePage("new-event")
 	})
 	
+	// Handle Escape key to cancel
+	form.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
+		if event.Key() == tcell.KeyEscape {
+			pages.RemovePage("new-event")
+			return nil
+		}
+		return event
+	})
+	
 	// Style
 	form.SetBackgroundColor(tcell.ColorBlack)
 	form.SetFieldBackgroundColor(tcell.ColorDarkBlue)
@@ -234,6 +243,15 @@ func ShowEditEventModal(app *tview.Application, pages *tview.Pages, date time.Ti
 	
 	form.AddButton("Cancel", func() {
 		pages.RemovePage("edit-event")
+	})
+	
+	// Handle Escape key to cancel
+	form.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
+		if event.Key() == tcell.KeyEscape {
+			pages.RemovePage("edit-event")
+			return nil
+		}
+		return event
 	})
 	
 	// Style

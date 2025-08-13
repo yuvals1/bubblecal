@@ -109,7 +109,22 @@ func (a *App) Run() error {
 
 func (a *App) bindKeys() {
 	a.app.SetInputCapture(func(ev *tcell.EventKey) *tcell.EventKey {
-		// Tab always toggles focus
+		// Check if a modal is currently active (by checking if "main" is the front page)
+		frontPage, _ := a.pages.GetFrontPage()
+		isModalOpen := frontPage != "main"
+		
+		// If a modal is open, let it handle all keys (including Tab)
+		if isModalOpen {
+			// Only handle global quit and help when modal is open
+			if ev.Rune() == 'q' && ev.Modifiers() == tcell.ModNone {
+				// Let 'q' work in form fields
+				return ev
+			}
+			// Let all keys including Tab pass through to the modal
+			return ev
+		}
+		
+		// Tab toggles focus only when no modal is open
 		if ev.Key() == tcell.KeyTab {
 			if a.uiState.FocusedPane == PaneMonth {
 				a.uiState.FocusedPane = PaneAgenda
