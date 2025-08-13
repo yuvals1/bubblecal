@@ -64,7 +64,7 @@ func (m *MonthViewModel) View() string {
 		headerCells = append(headerCells, cell)
 	}
 	lines = append(lines, lipgloss.JoinHorizontal(lipgloss.Top, headerCells...))
-	lines = append(lines, strings.Repeat("─", len(lipgloss.JoinHorizontal(lipgloss.Top, headerCells...)))) // Separator
+	lines = append(lines, strings.Repeat("─", m.width-4)) // Separator matching full width
 	
 	// Previous month's trailing days
 	prevLast := firstOfMonth.AddDate(0, 0, -1)
