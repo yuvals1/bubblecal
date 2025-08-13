@@ -119,10 +119,13 @@ func (m *MonthView) renderDayCell(date time.Time, otherMonth bool) *tview.TableC
 		style = style.Background(colorSelectedBackground).Foreground(colorSelectedText)
 	}
 
-    // Today underline (keep text color; just underline and add subtle accent)
+    // Today: emphasize with background/text color; if not selected, add underline too
     if sameDay(date, time.Now()) {
-        label = fmt.Sprintf("[::u]%s[::-]", label)
-        style = style.Underline(true)
+        style = style.Background(colorTodayBackground).Foreground(colorTodayText)
+        if !sameDay(date, m.uiState.SelectedDate) {
+            label = fmt.Sprintf("[::u]%s[::-]", label)
+            style = style.Underline(true)
+        }
     }
 
 	// Placeholder for event count badge (mock)

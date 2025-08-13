@@ -45,12 +45,17 @@ func (w *WeekView) Refresh() {
 	sel := w.uiState.SelectedDate
 	weekStart := sel.AddDate(0, 0, -int(sel.Weekday()))
 
-	// Header row: weekdays + day of month
+    // Header row: weekdays + day of month (colorize today)
 	w.table.SetCell(0, 0, tview.NewTableCell(" ").SetSelectable(false))
 	for d := 0; d < 7; d++ {
 		date := weekStart.AddDate(0, 0, d)
-		label := fmt.Sprintf("[::b]%s %d[::-]", date.Weekday().String()[:3], date.Day())
-		cell := tview.NewTableCell(label).SetAlign(tview.AlignCenter)
+        label := fmt.Sprintf("%s %d", date.Weekday().String()[:3], date.Day())
+        style := tcell.StyleDefault
+        if sameDay(date, time.Now()) {
+            style = style.Background(colorTodayBackground).Foreground(colorTodayText)
+            label = fmt.Sprintf("[::b]%s[::-]", label)
+        }
+        cell := tview.NewTableCell(label).SetAlign(tview.AlignCenter).SetStyle(style)
 		w.table.SetCell(0, d+1, cell)
 	}
 
@@ -68,10 +73,10 @@ func (w *WeekView) Refresh() {
 					cell.SetText(fmt.Sprintf("[green]●[::-] %s", evt.Title))
 				}
 			}
-			// Highlight today by underlining content
-			if sameDay(date, time.Now()) {
-				cell = cell.SetText(fmt.Sprintf("[::u]%s[::-]", cell.Text))
-			}
+            // Highlight today cells with background; keep any text
+            if sameDay(date, time.Now()) {
+                cell = cell.SetStyle(tcell.StyleDefault.Background(colorTodayBackground).Foreground(colorTodayText))
+            }
 			w.table.SetCell(r, c+1, cell)
 		}
 	}
