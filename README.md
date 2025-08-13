@@ -17,7 +17,9 @@ A fast, keyboard-driven terminal calendar built with Bubble Tea.
 ## Features
 
 - **Three Views**: Month, Week, and Day views with seamless navigation
-- **Event Management**: Create, edit, and delete events with persistent storage
+- **Event Management**: Create, edit, and delete events with modern modal interface
+- **Category System**: Color-coded event categories with persistent configuration
+- **KeyJump Navigation**: EasyMotion-style instant date jumping (press `f`)
 - **Themes**: 6 built-in color schemes (cycle with `s`)
 - **Vim Keys**: Full keyboard navigation with vim-style keybindings
 - **Smart Layout**: Toggleable agenda position and mini-month display
@@ -34,6 +36,7 @@ go build -o bubblecal ./cmd/bubblecal/
 | Key | Action |
 |-----|--------|
 | `Space` | Cycle views |
+| `f` | **KeyJump mode** - instant date navigation |
 | `a` | Add event |
 | `e` | Edit event (in agenda) |
 | `d` | Delete event (in agenda) |
@@ -43,6 +46,7 @@ go build -o bubblecal ./cmd/bubblecal/
 ### Navigation
 - **Move**: `h/j/k/l` or arrow keys
 - **Jump to today**: `t` or `.`
+- **KeyJump**: `f` → type letter to jump to any visible date
 - **Switch panes**: `Tab`
 
 ### Customization
@@ -50,9 +54,39 @@ go build -o bubblecal ./cmd/bubblecal/
 - **Move agenda**: `p` (right ↔ bottom)
 - **Themes**: `s` (6 themes available)
 
+## Advanced Features
+
+### KeyJump Navigation
+Inspired by vim's EasyMotion, press `f` to enter jump mode where letter overlays appear on all visible dates. Type any letter to instantly teleport to that date - no more arrow key navigation!
+
+### Event Categories
+Create and assign color-coded categories to your events. Categories are displayed throughout the interface with their assigned colors and can be easily selected when creating events.
+
+### Modern Event Modal
+Beautiful, intuitive event creation interface with:
+- Field-by-field navigation
+- Visual category selector
+- All-day event toggle
+- Smart time field handling
+- Clear error messages and instructions
+
 ## Data Storage
 
 Events are stored in `~/.bubblecal/days/` as individual files, making them easy to backup or sync. Configuration is saved in `~/.bubblecal/config.json`.
+
+### Categories
+
+Event categories are configured in `~/.bubblecal/config.json` with customizable colors:
+
+```json
+{
+  "categories": [
+    {"name": "Work", "color": "#4287f5"},
+    {"name": "Personal", "color": "#42f554"},
+    {"name": "Health", "color": "#f54242"}
+  ]
+}
+```
 
 ## Architecture
 
