@@ -16,7 +16,7 @@ func buildHeader() *tview.TextView {
 }
 
 func renderHeader(now time.Time) string {
-	// Example: " Aug 2025 · Simple TUI Cal    [n] New  [?] Help  [q] Quit"
-	return fmt.Sprintf(" [::b]%s %d[::-] · Simple TUI Cal    [::d][n] New  [?] Help  [q] Quit[::-]",
+	// Example: " Aug 2025 · Simple TUI Cal    [a] Add  [e] Edit  [d] Delete  [?] Help  [q] Quit"
+	return fmt.Sprintf(" [::b]%s %d[::-] · Simple TUI Cal    [yellow][a][::-] Add  [yellow][e][::-] Edit  [yellow][d][::-] Delete  [yellow][?][::-] Help  [yellow][q][::-] Quit",
 		now.Month().String()[:3], now.Year())
 }

@@ -2,6 +2,8 @@ package ui
 
 import (
 	"fmt"
+	"simple-tui-cal/internal/model"
+	"simple-tui-cal/internal/storage"
 	"time"
 
 	"github.com/rivo/tview"
@@ -10,6 +12,7 @@ import (
 type AgendaView struct {
 	uiState *UIState
 	list    *tview.List
+	events  []*model.Event  // Store current events for reference
 }
 
 func NewAgendaView(state *UIState) *AgendaView {
@@ -26,25 +29,59 @@ func (a *AgendaView) Primitive() tview.Primitive { return a.list }
 
 func (a *AgendaView) Refresh() {
 	a.list.Clear()
-	// Mock entries
 	date := a.uiState.SelectedDate
-	for i, evt := range mockEventsFor(date) {
-		a.list.AddItem(fmt.Sprintf("%s %s", evt.Time.Format("15:04"), evt.Title), "", rune('1'+i), nil)
+	
+	// Load real events from file
+	events, err := storage.LoadDayEvents(date)
+	if err != nil {
+		a.list.AddItem(fmt.Sprintf("Error loading events: %v", err), "", 0, nil)
+		a.events = nil
+		return
+	}
+	
+	// Store events for reference
+	a.events = events
+	
+	if len(events) == 0 {
+		a.list.AddItem("No events scheduled", "", 0, nil)
+		return
+	}
+	
+	for i, evt := range events {
+		var timeStr string
+		if evt.IsAllDay() {
+			timeStr = "All day"
+		} else if evt.EndTime != "" {
+			timeStr = fmt.Sprintf("%s-%s", evt.StartTime, evt.EndTime)
+		} else {
+			timeStr = evt.StartTime
+		}
+		
+		label := fmt.Sprintf("%s %s", timeStr, evt.Title)
+		a.list.AddItem(label, "", rune('1'+i), nil)
 	}
 }
 
-type MockEvent struct {
-	Time  time.Time
-	Title string
+// GetEventsForDate loads events from storage (replacing old mockEventsFor)
+func GetEventsForDate(date time.Time) ([]*model.Event, error) {
+	return storage.LoadDayEvents(date)
 }
 
-func mockEventsFor(date time.Time) []MockEvent {
-	// Deterministic mock: events on even days
-	var res []MockEvent
-	if date.Day()%2 == 0 {
-		res = append(res, MockEvent{Time: time.Date(date.Year(), date.Month(), date.Day(), 9, 30, 0, 0, date.Location()), Title: "Standup"})
-		res = append(res, MockEvent{Time: time.Date(date.Year(), date.Month(), date.Day(), 12, 0, 0, 0, date.Location()), Title: "Lunch"})
-		res = append(res, MockEvent{Time: time.Date(date.Year(), date.Month(), date.Day(), 18, 0, 0, 0, date.Location()), Title: "Gym"})
+// GetSelectedEvent returns the currently selected event, or nil if none
+func (a *AgendaView) GetSelectedEvent() *model.Event {
+	if a.events == nil || len(a.events) == 0 {
+		return nil
 	}
-	return res
+	
+	index := a.list.GetCurrentItem()
+	if index < 0 || index >= len(a.events) {
+		return nil
+	}
+	
+	return a.events[index]
+}
+
+// GetSelectedIndex returns the index of the currently selected event
+func (a *AgendaView) GetSelectedIndex() int {
+	return a.list.GetCurrentItem()
 }

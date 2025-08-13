@@ -1,6 +1,7 @@
 package ui
 
 import (
+	"simple-tui-cal/internal/ui/modals"
 	"time"
 
 	"github.com/gdamore/tcell/v2"
@@ -126,15 +127,27 @@ func (a *App) bindKeys() {
             a.refreshAll()
             return nil
         case 'k':
-            // vim-style up: previous week
-            a.uiState.SelectedDate = a.uiState.SelectedDate.AddDate(0, 0, -7)
-            a.refreshAll()
-            return nil
+            // vim-style up
+            if a.uiState.CurrentView == ViewWeek {
+                // In week view, delegate to the table's navigation (moves by hour)
+                return ev
+            } else {
+                // In month view: previous week
+                a.uiState.SelectedDate = a.uiState.SelectedDate.AddDate(0, 0, -7)
+                a.refreshAll()
+                return nil
+            }
         case 'j':
-            // vim-style down: next week
-            a.uiState.SelectedDate = a.uiState.SelectedDate.AddDate(0, 0, 7)
-            a.refreshAll()
-            return nil
+            // vim-style down
+            if a.uiState.CurrentView == ViewWeek {
+                // In week view, delegate to the table's navigation (moves by hour)
+                return ev
+            } else {
+                // In month view: next week
+                a.uiState.SelectedDate = a.uiState.SelectedDate.AddDate(0, 0, 7)
+                a.refreshAll()
+                return nil
+            }
         case 'w':
             a.uiState.CurrentView = ViewWeek
             a.center.SwitchToPage("week")
@@ -149,6 +162,30 @@ func (a *App) bindKeys() {
 			a.uiState.SelectedDate = time.Now()
             a.refreshAll()
 			return nil
+		case 'a':
+			// Add new event
+			modals.ShowNewEventModal(a.app, a.pages, a.uiState.SelectedDate, func() {
+				a.refreshAll()
+			})
+			return nil
+		case 'e':
+			// Edit selected event
+			if a.agendaView.GetSelectedEvent() != nil {
+				modals.ShowEditEventModal(a.app, a.pages, a.uiState.SelectedDate, 
+					a.agendaView.GetSelectedEvent(), a.agendaView.GetSelectedIndex(), func() {
+					a.refreshAll()
+				})
+			}
+			return nil
+		case 'd':
+			// Delete selected event
+			if a.agendaView.GetSelectedEvent() != nil {
+				modals.ShowDeleteConfirmModal(a.app, a.pages, a.uiState.SelectedDate,
+					a.agendaView.GetSelectedEvent(), a.agendaView.GetSelectedIndex(), func() {
+					a.refreshAll()
+				})
+			}
+			return nil
 		}
 		switch ev.Key() {
 		case tcell.KeyLeft:
@@ -156,8 +193,18 @@ func (a *App) bindKeys() {
 		case tcell.KeyRight:
 			a.uiState.SelectedDate = a.uiState.SelectedDate.AddDate(0, 0, 1)
 		case tcell.KeyUp:
+			if a.uiState.CurrentView == ViewWeek {
+				// In week view, delegate to the table's navigation (moves by hour row)
+				return ev
+			}
+			// In month view: previous week
 			a.uiState.SelectedDate = a.uiState.SelectedDate.AddDate(0, 0, -7)
 		case tcell.KeyDown:
+			if a.uiState.CurrentView == ViewWeek {
+				// In week view, delegate to the table's navigation (moves by hour row)
+				return ev
+			}
+			// In month view: next week
 			a.uiState.SelectedDate = a.uiState.SelectedDate.AddDate(0, 0, 7)
         case tcell.KeyCtrlU:
             // Week view: previous week; Month view: previous month

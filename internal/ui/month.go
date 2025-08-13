@@ -2,6 +2,7 @@ package ui
 
 import (
 	"fmt"
+	"simple-tui-cal/internal/storage"
 	"time"
 
 	"github.com/gdamore/tcell/v2"
@@ -126,10 +127,10 @@ func (m *MonthView) renderDayCell(date time.Time, otherMonth bool) *tview.TableC
         label = fmt.Sprintf("[white]%s[::-]", label)
     }
 
-	// Placeholder for event count badge (mock)
+	// Show real event count
 	badge := ""
-	if cnt := mockEventCount(date); cnt > 0 {
-		badge = fmt.Sprintf(" [green]●%d[::-]", cnt)
+	if events, err := storage.LoadDayEvents(date); err == nil && len(events) > 0 {
+		badge = fmt.Sprintf(" [green]●%d[::-]", len(events))
 	}
 
     // Add a red "T" marker to clearly denote today
@@ -167,10 +168,3 @@ func sameDay(a, b time.Time) bool {
 	return ay == by && am == bm && ad == bd
 }
 
-func mockEventCount(date time.Time) int {
-	// Simple deterministic mock: events on every 2nd day
-	if date.Day()%2 == 0 {
-		return 2
-	}
-	return 0
-}

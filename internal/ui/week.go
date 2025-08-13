@@ -2,6 +2,8 @@ package ui
 
 import (
 	"fmt"
+	"simple-tui-cal/internal/storage"
+	"strings"
 	"time"
 
 	"github.com/gdamore/tcell/v2"
@@ -68,13 +70,28 @@ func (w *WeekView) Refresh() {
 		w.table.SetCell(r, 0, tview.NewTableCell(fmt.Sprintf("%02d:00", h)).SetAlign(tview.AlignRight).SetSelectable(false))
 		for c := 0; c < 7; c++ {
 			date := weekStart.AddDate(0, 0, c)
-			cell := tview.NewTableCell(" ").SetExpansion(1)
-			// Mock event placement: render title at the event hour
-			for _, evt := range mockEventsFor(date) {
-				if evt.Time.Hour() == h {
-					cell.SetText(fmt.Sprintf("[green]●[::-] %s", evt.Title))
+			cellText := " "
+			
+			// Load real events and show those that occur at this hour
+			if events, err := storage.LoadDayEvents(date); err == nil {
+				for _, evt := range events {
+					if evt.IsAllDay() {
+						continue // Don't show all-day events in hourly grid
+					}
+					
+					// Parse start time to check if it matches this hour
+					if strings.HasPrefix(evt.StartTime, fmt.Sprintf("%02d:", h)) {
+						if cellText == " " {
+							cellText = ""
+						} else {
+							cellText += " | "
+						}
+						cellText += fmt.Sprintf("[green]●[::-] %s", evt.Title)
+					}
 				}
 			}
+			
+			cell := tview.NewTableCell(cellText).SetExpansion(1)
             // Highlight today cells with background; keep any text
             if sameDay(date, time.Now()) {
                 cell = cell.SetStyle(tcell.StyleDefault.Background(colorTodayBackground).Foreground(colorTodayText))
