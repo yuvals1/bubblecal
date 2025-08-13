@@ -341,7 +341,7 @@ func (l *ListViewModel) renderDateHeader(date time.Time) string {
 	
 	headerStyle := lipgloss.NewStyle().
 		Bold(true).
-		Foreground(lipgloss.Color("39")).
+		Foreground(lipgloss.Color("245")).  // Subtle gray instead of blue
 		Background(lipgloss.Color("235")).
 		Width(l.width).
 		Padding(0, 1)

@@ -921,7 +921,10 @@ func (m *Model) View() string {
 }
 
 func (m *Model) renderHeader() string {
-	headerText := " BubbleCal · " + m.selectedDate.Format("Jan 2006")
+	dateText := lipgloss.NewStyle().
+		Foreground(lipgloss.Color("220")).  // Yellow color
+		Render(m.selectedDate.Format("Jan 2006"))
+	headerText := " BubbleCal · " + dateText
 	
 	if m.jumpMode {
 		jumpStatus := lipgloss.NewStyle().
