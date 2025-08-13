@@ -1,7 +1,9 @@
 # Migration from tview to Bubble Tea
 
 ## Status
-✅ **Migration Complete!** The Bubble Tea implementation now has full feature parity with improvements:
+✅ **Migration Complete! tview has been removed from the project.**
+
+The Bubble Tea implementation now has full feature parity with improvements:
 - ✅ Month, Week, and Day views
 - ✅ Agenda sidebar
 - ✅ Keyboard navigation (vim keys + arrows)
