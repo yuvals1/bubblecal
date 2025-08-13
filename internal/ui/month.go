@@ -139,6 +139,11 @@ func (m *MonthView) renderDayCell(date time.Time, otherMonth bool) *tview.TableC
         label = fmt.Sprintf("[white]%s[::-]", label)
     }
 
+	// Add a red "T" marker to clearly denote today
+	if sameDay(date, time.Now()) {
+		label += " [red]T[::-]"
+	}
+
 	// Show first all-day event or event count
 	badge := ""
 	if events, err := storage.LoadDayEvents(date); err == nil && len(events) > 0 {
@@ -161,11 +166,6 @@ func (m *MonthView) renderDayCell(date time.Time, otherMonth bool) *tview.TableC
 			badge = fmt.Sprintf(" [green]●%d[::-]", len(events))
 		}
 	}
-
-    // Add a red "T" marker to clearly denote today
-    if sameDay(date, time.Now()) {
-        label += " [red]T[::-]"
-    }
 
     cell := tview.NewTableCell(label + badge)
     cell.SetAlign(tview.AlignLeft).SetStyle(style).SetExpansion(1)
