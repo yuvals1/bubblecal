@@ -182,7 +182,7 @@ func (a *App) bindKeys() {
 			a.app.Stop()
 			return nil
 		case '?':
-			ShowHelpModal(a.app, a.pages)
+			ShowHelpModal(a.app, a.pages, a.uiState.CurrentView, a.uiState.FocusedPane)
 			return nil
 		case 'g':
 			a.uiState.SelectedDate = time.Now()
