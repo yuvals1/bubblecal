@@ -330,15 +330,15 @@ func (m *Model) handleAgendaNavigation(msg tea.KeyMsg) tea.Cmd {
 			return modal.Init()
 		}
 	case "d":
-		// Delete selected event
+		// Delete selected event directly
 		if idx := m.agendaView.GetSelectedIndex(); idx >= 0 && idx < len(m.events) {
 			event := m.events[idx]
-			modal := NewDeleteModal(m.selectedDate, event, idx, m.styles)
-			// Set modal window size
-			modal.width = m.width
-			modal.height = m.height
-			m.modalStack = append(m.modalStack, modal)
-			return nil
+			// Delete the event immediately
+			if err := storage.DeleteEvent(m.selectedDate, event); err == nil {
+				// Reload events after successful deletion
+				m.loadEvents()
+				return loadEventsCmd(m.selectedDate)
+			}
 		}
 	case "h", "left":
 		m.selectedDate = m.selectedDate.AddDate(0, 0, -1)
