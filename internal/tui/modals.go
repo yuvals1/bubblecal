@@ -497,6 +497,7 @@ func (m *HelpModal) View() string {
 	helpText = append(helpText, "")
 	
 	helpText = append(helpText, lipgloss.NewStyle().Bold(true).Render("General:"))
+	helpText = append(helpText, "  p         Toggle agenda position (right/bottom)")
 	helpText = append(helpText, "  ?         Help")
 	helpText = append(helpText, "  q         Quit")
 	helpText = append(helpText, "")

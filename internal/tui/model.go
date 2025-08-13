@@ -42,6 +42,7 @@ type Model struct {
 	width        int
 	height       int
 	showMiniMonth bool // Toggle mini-month view in week view
+	agendaBottom  bool // Show agenda at bottom instead of right
 	
 	// Components
 	monthView    *MonthViewModel
@@ -95,6 +96,7 @@ func NewModel() *Model {
 		focusedPane:  CalendarPane,
 		selectedHour: 12, // Default to noon
 		showMiniMonth: cfg.ShowMiniMonth,
+		agendaBottom:  cfg.AgendaBottom,
 		config:       cfg,
 		styles:       DefaultStyles(),
 	}
@@ -255,6 +257,15 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.config.Save()
 			}
 			
+		case "p":
+			// Toggle agenda position (bottom/right)
+			m.agendaBottom = !m.agendaBottom
+			// Save the preference
+			m.config.AgendaBottom = m.agendaBottom
+			m.config.Save()
+			// Update view sizes
+			m.updateViewSizes()
+			
 		case "?":
 			// Show help
 			modal := NewHelpModal(m.currentView, m.focusedPane, m.styles)
@@ -376,25 +387,46 @@ func (m *Model) handleAgendaNavigation(msg tea.KeyMsg) tea.Cmd {
 }
 
 func (m *Model) updateViewSizes() {
-	// Calculate sizes for views
-	agendaWidth := 35
-	if m.width < 100 {
-		agendaWidth = 30
-	}
-	calendarWidth := m.width - agendaWidth - 3 // Account for borders and spacing
-	calendarHeight := m.height - 3 // Account for header
-	
-	if m.monthView != nil {
-		m.monthView.SetSize(calendarWidth, calendarHeight)
-	}
-	if m.weekView != nil {
-		m.weekView.SetSize(calendarWidth, calendarHeight)
-	}
-	if m.dayView != nil {
-		m.dayView.SetSize(calendarWidth, calendarHeight)
-	}
-	if m.agendaView != nil {
-		m.agendaView.SetSize(agendaWidth, calendarHeight)
+	// Calculate sizes for views based on agenda position
+	if m.agendaBottom {
+		// Agenda at bottom
+		agendaHeight := 10 // Fixed height for bottom agenda
+		calendarWidth := m.width - 2
+		calendarHeight := m.height - agendaHeight - 4 // Account for header and borders
+		
+		if m.monthView != nil {
+			m.monthView.SetSize(calendarWidth, calendarHeight)
+		}
+		if m.weekView != nil {
+			m.weekView.SetSize(calendarWidth, calendarHeight)
+		}
+		if m.dayView != nil {
+			m.dayView.SetSize(calendarWidth, calendarHeight)
+		}
+		if m.agendaView != nil {
+			m.agendaView.SetSize(calendarWidth, agendaHeight)
+		}
+	} else {
+		// Agenda on right (default)
+		agendaWidth := 35
+		if m.width < 100 {
+			agendaWidth = 30
+		}
+		calendarWidth := m.width - agendaWidth - 3 // Account for borders and spacing
+		calendarHeight := m.height - 3 // Account for header
+		
+		if m.monthView != nil {
+			m.monthView.SetSize(calendarWidth, calendarHeight)
+		}
+		if m.weekView != nil {
+			m.weekView.SetSize(calendarWidth, calendarHeight)
+		}
+		if m.dayView != nil {
+			m.dayView.SetSize(calendarWidth, calendarHeight)
+		}
+		if m.agendaView != nil {
+			m.agendaView.SetSize(agendaWidth, calendarHeight)
+		}
 	}
 }
 
@@ -455,27 +487,51 @@ func (m *Model) View() string {
 		agendaBorder = focusedBorderStyle
 	}
 	
-	// Calculate dimensions
-	agendaWidth := 35
-	if m.width < 100 {
-		agendaWidth = 30
+	// Render based on agenda position
+	var main string
+	if m.agendaBottom {
+		// Agenda at bottom layout
+		agendaHeight := 10
+		calendarWidth := m.width - 2
+		calendarHeight := m.height - agendaHeight - 4
+		
+		// Render calendar
+		calendarBox := calendarBorder.
+			Width(calendarWidth).
+			Height(calendarHeight).
+			Render(lipgloss.NewStyle().Padding(0, 1).Render(viewTitle) + "\n" + calendarView)
+		
+		// Render agenda
+		agendaBox := agendaBorder.
+			Width(calendarWidth).
+			Height(agendaHeight).
+			Render(lipgloss.NewStyle().Padding(0, 1).Render(" Agenda ") + "\n" + m.agendaView.View())
+		
+		// Stack calendar on top of agenda
+		main = lipgloss.JoinVertical(lipgloss.Left, calendarBox, agendaBox)
+	} else {
+		// Agenda on right layout (default)
+		agendaWidth := 35
+		if m.width < 100 {
+			agendaWidth = 30
+		}
+		calendarWidth := m.width - agendaWidth - 3
+		contentHeight := m.height - 3
+		
+		// Render with borders
+		calendarBox := calendarBorder.
+			Width(calendarWidth).
+			Height(contentHeight).
+			Render(lipgloss.NewStyle().Padding(0, 1).Render(viewTitle) + "\n" + calendarView)
+		
+		agendaBox := agendaBorder.
+			Width(agendaWidth).
+			Height(contentHeight).
+			Render(lipgloss.NewStyle().Padding(0, 1).Render(" Agenda ") + "\n" + m.agendaView.View())
+		
+		// Combine calendar and agenda side by side
+		main = lipgloss.JoinHorizontal(lipgloss.Top, calendarBox, " ", agendaBox)
 	}
-	calendarWidth := m.width - agendaWidth - 3
-	contentHeight := m.height - 3
-	
-	// Render with borders
-	calendarBox := calendarBorder.
-		Width(calendarWidth).
-		Height(contentHeight).
-		Render(lipgloss.NewStyle().Padding(0, 1).Render(viewTitle) + "\n" + calendarView)
-	
-	agendaBox := agendaBorder.
-		Width(agendaWidth).
-		Height(contentHeight).
-		Render(lipgloss.NewStyle().Padding(0, 1).Render(" Agenda ") + "\n" + m.agendaView.View())
-	
-	// Combine calendar and agenda side by side
-	main := lipgloss.JoinHorizontal(lipgloss.Top, calendarBox, " ", agendaBox)
 	
 	// Combine header and main content
 	return lipgloss.JoinVertical(lipgloss.Left, header, main)

@@ -8,13 +8,15 @@ import (
 
 // Config holds application configuration
 type Config struct {
-	ShowMiniMonth bool `json:"show_mini_month"`
+	ShowMiniMonth bool   `json:"show_mini_month"`
+	AgendaBottom  bool   `json:"agenda_bottom"`
 }
 
 // DefaultConfig returns the default configuration
 func DefaultConfig() *Config {
 	return &Config{
 		ShowMiniMonth: true,
+		AgendaBottom:  false, // Default to right side
 	}
 }
 
