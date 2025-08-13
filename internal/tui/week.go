@@ -113,22 +113,38 @@ func (w *WeekViewModel) View() string {
 	for h := startHour; h <= endHour; h++ {
 		var rowCells []string
 		
-		// Hour label
+		// First, determine the maximum height needed for this hour row
+		maxHeight := 1
+		var cellContents []string
+		for d := 0; d < 7; d++ {
+			date := weekStart.AddDate(0, 0, d)
+			content := w.getHourEvents(date, h)
+			cellContents = append(cellContents, content)
+			if content != "" {
+				height := strings.Count(content, "\n") + 1
+				if height > maxHeight {
+					maxHeight = height
+				}
+			}
+		}
+		
+		// Hour label - match the row height
 		hourLabel := lipgloss.NewStyle().
 			Width(8).
+			Height(maxHeight).
 			Align(lipgloss.Right).
 			Foreground(lipgloss.Color("240")).
 			Render(fmt.Sprintf("%02d:00 ", h))
 		rowCells = append(rowCells, hourLabel)
 		
-		// Day cells
+		// Day cells with consistent height
 		for d := 0; d < 7; d++ {
 			date := weekStart.AddDate(0, 0, d)
-			cellContent := w.getHourEvents(date, h)
+			cellContent := cellContents[d]
 			
 			cellStyle := lipgloss.NewStyle().
 				Width(colWidth).
-				Height(1).
+				Height(maxHeight).
 				Padding(0, 1)
 			
 			// Subtle background for today's column
@@ -192,6 +208,7 @@ func (w *WeekViewModel) getAllDayEvents(date time.Time) string {
 func (w *WeekViewModel) getHourEvents(date time.Time, hour int) string {
 	events, _ := storage.LoadDayEvents(date)
 	
+	var hourEvents []string
 	for _, evt := range events {
 		if evt.IsAllDay() {
 			continue
@@ -206,10 +223,14 @@ func (w *WeekViewModel) getHourEvents(date time.Time, hour int) string {
 			if len(title) > maxLen && maxLen > 3 {
 				title = title[:maxLen-1] + "…"
 			}
-			return w.styles.EventBadge.Render("●") + " " + title
+			hourEvents = append(hourEvents, w.styles.EventBadge.Render("●")+" "+title)
 		}
 	}
 	
+	if len(hourEvents) > 0 {
+		// Return all events, each on its own line
+		return strings.Join(hourEvents, "\n")
+	}
 	return ""
 }
 

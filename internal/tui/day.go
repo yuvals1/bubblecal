@@ -120,12 +120,26 @@ func (d *DayViewModel) View() string {
 	}
 	
 	for h := startHour; h <= endHour && len(lines) < d.height-2; h++ {
+		// Calculate row height based on number of events
+		rowHeight := 1
+		eventsText := ""
+		if events, ok := hourEvents[h]; ok {
+			// Display each event on its own line
+			eventsText = strings.Join(events, "\n")
+			rowHeight = len(events)
+			if rowHeight < 1 {
+				rowHeight = 1
+			}
+		}
+		
 		hourStyle := lipgloss.NewStyle().
 			Width(10).
+			Height(rowHeight).
 			Align(lipgloss.Right).
 			Foreground(lipgloss.Color("240"))
 		
-		eventStyle := lipgloss.NewStyle()
+		eventStyle := lipgloss.NewStyle().
+			Height(rowHeight)
 		
 		// Highlight selected hour
 		if h == *d.selectedHour {
@@ -147,16 +161,6 @@ func (d *DayViewModel) View() string {
 		}
 		
 		hourLabel := hourStyle.Render(fmt.Sprintf("%02d:00 ", h))
-		
-		eventsText := ""
-		if events, ok := hourEvents[h]; ok {
-			eventsText = strings.Join(events, " | ")
-			// Truncate if too long
-			maxLen := d.width - 14
-			if len(eventsText) > maxLen {
-				eventsText = eventsText[:maxLen-1] + "…"
-			}
-		}
 		
 		eventContent := eventStyle.
 			Width(d.width - 14).
