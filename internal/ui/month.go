@@ -1,0 +1,136 @@
+package ui
+
+import (
+	"fmt"
+	"time"
+
+	"github.com/gdamore/tcell/v2"
+	"github.com/rivo/tview"
+)
+
+type MonthView struct {
+	uiState *UIState
+	table   *tview.Table
+}
+
+func NewMonthView(state *UIState) *MonthView {
+	t := tview.NewTable()
+	t.SetBorders(true)
+	t.SetFixed(1, 0)
+	mv := &MonthView{uiState: state, table: t}
+	mv.buildStatic()
+	mv.Refresh()
+	return mv
+}
+
+func (m *MonthView) Primitive() tview.Primitive { return m.table }
+
+func (m *MonthView) buildStatic() {
+	// Header row Sun..Sat
+	weekdays := []string{"Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"}
+	for c, name := range weekdays {
+		cell := tview.NewTableCell(fmt.Sprintf("[::b]%s", name)).
+			SetAlign(tview.AlignCenter)
+		m.table.SetCell(0, c, cell)
+	}
+}
+
+func (m *MonthView) Refresh() {
+	m.table.Clear()
+	m.buildStatic()
+
+	now := m.uiState.SelectedDate
+	firstOfMonth := time.Date(now.Year(), now.Month(), 1, 0, 0, 0, 0, now.Location())
+	startWeekday := int(firstOfMonth.Weekday()) // 0=Sun
+	// Determine how many days in month
+	firstOfNext := firstOfMonth.AddDate(0, 1, 0)
+	daysInMonth := int(firstOfNext.Sub(firstOfMonth).Hours()/24 + 0.5)
+
+	// Previous month tail
+	prevLast := firstOfMonth.AddDate(0, 0, -1)
+	prevDays := int(firstOfMonth.Sub(time.Date(firstOfMonth.Year(), firstOfMonth.Month(), 0, 0, 0, 0, 0, now.Location())).Hours()/24 + 0.5)
+	_ = prevDays // not used directly, but keep for clarity
+
+	row := 1
+	col := startWeekday
+
+	// Fill leading days from previous month
+	for d := startWeekday - 1; d >= 0; d-- {
+		day := prevLast.Day() - (startWeekday-1-d)
+		date := time.Date(prevLast.Year(), prevLast.Month(), day, 0, 0, 0, 0, now.Location())
+		m.table.SetCell(row, d, m.renderDayCell(date, true))
+	}
+
+	// Fill current month
+	for day := 1; day <= daysInMonth; day++ {
+		date := time.Date(now.Year(), now.Month(), day, 0, 0, 0, 0, now.Location())
+		m.table.SetCell(row, col, m.renderDayCell(date, false))
+		col++
+		if col > 6 {
+			col = 0
+			row++
+		}
+	}
+
+	// Fill trailing days from next month to complete 6 rows
+	for row <= 6 {
+		for col <= 6 {
+			// compute date offset from firstOfNext
+			offsetDays := (row-1)*7 + col - startWeekday - daysInMonth
+			date := firstOfNext.AddDate(0, 0, offsetDays)
+			m.table.SetCell(row, col, m.renderDayCell(date, true))
+			col++
+		}
+		col = 0
+		row++
+	}
+}
+
+func (m *MonthView) renderDayCell(date time.Time, otherMonth bool) *tview.TableCell {
+	label := fmt.Sprintf("%d", date.Day())
+	style := tcell.StyleDefault
+
+	// Weekend dim
+	if date.Weekday() == time.Saturday || date.Weekday() == time.Sunday {
+		style = style.Foreground(colorWeekendText)
+	}
+	if otherMonth {
+		style = style.Foreground(colorOtherMonthText)
+	}
+
+	// Selected highlight
+	if sameDay(date, m.uiState.SelectedDate) {
+		label = fmt.Sprintf("[::b]%d[::-]", date.Day())
+		style = style.Background(colorSelectedBackground).Foreground(colorSelectedText)
+	}
+
+	// Today underline
+	if sameDay(date, time.Now()) {
+		label = fmt.Sprintf("[::u]%s[::-]", label)
+		style = style.Underline(true).Foreground(colorTodayUnderline)
+	}
+
+	// Placeholder for event count badge (mock)
+	badge := ""
+	if cnt := mockEventCount(date); cnt > 0 {
+		badge = fmt.Sprintf(" [green]●%d[::-]", cnt)
+	}
+
+    cell := tview.NewTableCell(label + badge)
+    cell.SetAlign(tview.AlignLeft).SetStyle(style)
+    return cell
+}
+
+func sameDay(a, b time.Time) bool {
+	ay, am, ad := a.Date()
+	by, bm, bd := b.Date()
+	return ay == by && am == bm && ad == bd
+}
+
+func mockEventCount(date time.Time) int {
+	// Simple deterministic mock: events on every 2nd day
+	if date.Day()%2 == 0 {
+		return 2
+	}
+	return 0
+}
