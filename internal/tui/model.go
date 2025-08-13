@@ -921,7 +921,7 @@ func (m *Model) View() string {
 }
 
 func (m *Model) renderHeader() string {
-	headerText := " " + m.selectedDate.Format("Jan 2006") + " · BubbleCal"
+	headerText := " BubbleCal · " + m.selectedDate.Format("Jan 2006")
 	
 	if m.jumpMode {
 		jumpStatus := lipgloss.NewStyle().
