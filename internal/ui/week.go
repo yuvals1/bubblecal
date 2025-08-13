@@ -156,14 +156,22 @@ func (w *WeekView) refreshMiniMonth() {
 func (w *WeekView) renderMiniCell(date time.Time, otherMonth bool, weekStart, weekEnd time.Time) *tview.TableCell {
     label := fmt.Sprintf("%2d", date.Day())
     style := tcell.StyleDefault
-    if otherMonth {
+    
+    // Normalize dates to compare only the date part, not time
+    dateOnly := time.Date(date.Year(), date.Month(), date.Day(), 0, 0, 0, 0, date.Location())
+    weekStartOnly := time.Date(weekStart.Year(), weekStart.Month(), weekStart.Day(), 0, 0, 0, 0, weekStart.Location())
+    weekEndOnly := time.Date(weekEnd.Year(), weekEnd.Month(), weekEnd.Day(), 0, 0, 0, 0, weekEnd.Location())
+    
+    // Check if date is in current week
+    inCurrentWeek := !dateOnly.Before(weekStartOnly) && !dateOnly.After(weekEndOnly)
+    
+    if inCurrentWeek {
+        // Current week days always in red
+        style = style.Foreground(tcell.ColorRed)
+    } else if otherMonth {
         style = style.Foreground(colorOtherMonthText)
     } else {
         style = style.Foreground(tcell.ColorWhite)
-    }
-    // Current week days in red
-    if !date.Before(weekStart) && !date.After(weekEnd) {
-        style = style.Foreground(tcell.ColorRed)
     }
     // Today underline for context
     if sameDay(date, time.Now()) {
