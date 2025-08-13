@@ -20,6 +20,7 @@ type WeekView struct {
 func NewWeekView(state *UIState) *WeekView {
     t := tview.NewTable()
     t.SetBorders(true)
+    t.SetBorder(true)  // Add border to the table itself
     // Row 0 = weekdays header, Col 0 = hour labels
     t.SetFixed(1, 1)
     t.SetSelectable(true, true)
@@ -39,6 +40,15 @@ func NewWeekView(state *UIState) *WeekView {
 }
 
 func (w *WeekView) Primitive() tview.Primitive { return w.root }
+
+// SetFocused updates the visual style when week view gains/loses focus
+func (w *WeekView) SetFocused(focused bool) {
+	if focused {
+		w.table.SetBorderColor(tcell.ColorYellow)
+	} else {
+		w.table.SetBorderColor(tcell.ColorDefault)
+	}
+}
 
 func (w *WeekView) Refresh() {
     w.table.Clear()

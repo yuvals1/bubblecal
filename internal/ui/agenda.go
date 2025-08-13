@@ -50,6 +50,17 @@ func NewAgendaView(state *UIState) *AgendaView {
 
 func (a *AgendaView) Primitive() tview.Primitive { return a.list }
 
+// SetFocused updates the visual style when agenda gains/loses focus
+func (a *AgendaView) SetFocused(focused bool) {
+	if focused {
+		a.list.SetBorderColor(tcell.ColorYellow)
+		a.list.SetTitleColor(tcell.ColorYellow)
+	} else {
+		a.list.SetBorderColor(tcell.ColorDefault)
+		a.list.SetTitleColor(tcell.ColorDefault)
+	}
+}
+
 func (a *AgendaView) Refresh() {
 	a.list.Clear()
 	date := a.uiState.SelectedDate

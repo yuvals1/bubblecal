@@ -89,6 +89,9 @@ func NewApp() (*App, error) {
 
 	app.bindKeys()
     app.refreshAll()
+    // Set initial focus on month view
+    app.monthView.SetFocused(true)
+    app.agendaView.SetFocused(false)
     application.SetRoot(root, true).EnableMouse(true)
 
 	// Keep the table's selection synchronized if the user moves it with arrow keys
@@ -129,12 +132,21 @@ func (a *App) bindKeys() {
 			if a.uiState.FocusedPane == PaneMonth {
 				a.uiState.FocusedPane = PaneAgenda
 				a.app.SetFocus(a.agendaView.Primitive())
+				// Update visual indicators
+				a.monthView.SetFocused(false)
+				a.weekView.SetFocused(false)
+				a.agendaView.SetFocused(true)
 			} else {
 				a.uiState.FocusedPane = PaneMonth
+				a.agendaView.SetFocused(false)
 				if a.uiState.CurrentView == ViewWeek {
 					a.app.SetFocus(a.weekView.Primitive())
+					a.weekView.SetFocused(true)
+					a.monthView.SetFocused(false)
 				} else {
 					a.app.SetFocus(a.monthView.Primitive())
+					a.monthView.SetFocused(true)
+					a.weekView.SetFocused(false)
 				}
 			}
 			return nil
@@ -151,11 +163,21 @@ func (a *App) bindKeys() {
 		case 'w':
 			a.uiState.CurrentView = ViewWeek
 			a.center.SwitchToPage("week")
+			// Update focus indicators if calendar is focused
+			if a.uiState.FocusedPane == PaneMonth {
+				a.monthView.SetFocused(false)
+				a.weekView.SetFocused(true)
+			}
 			a.refreshAll()
 			return nil
 		case 'm':
 			a.uiState.CurrentView = ViewMonth
 			a.center.SwitchToPage("month")
+			// Update focus indicators if calendar is focused
+			if a.uiState.FocusedPane == PaneMonth {
+				a.weekView.SetFocused(false)
+				a.monthView.SetFocused(true)
+			}
 			a.refreshAll()
 			return nil
 		case 'g':
