@@ -171,16 +171,17 @@ func (w *WeekView) renderMiniCell(date time.Time, otherMonth bool, weekStart, we
     inCurrentWeek := !dateOnly.Before(weekStartOnly) && !dateOnly.After(weekEndOnly)
     
     if inCurrentWeek {
-        // Current week days always in red
+        // Current week days in red (fallback)
         style = style.Foreground(tcell.ColorRed)
     } else if otherMonth {
         style = style.Foreground(colorOtherMonthText)
     } else {
         style = style.Foreground(tcell.ColorWhite)
     }
-    // Today underline for context
+    // Today: use distinct background/text and bold
     if sameDay(date, time.Now()) {
-        label = fmt.Sprintf("[::u]%s[::-]", label)
+        style = style.Background(colorTodayBackground).Foreground(colorTodayText)
+        label = fmt.Sprintf("[::b]%s[::-]", label)
     }
     cell := tview.NewTableCell(label).SetAlign(tview.AlignRight).SetStyle(style)
     return cell
