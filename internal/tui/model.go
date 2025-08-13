@@ -861,10 +861,11 @@ func (m *Model) View() string {
 			Render(lipgloss.NewStyle().Padding(0, 1).Render(viewTitle) + "\n" + calendarView)
 		
 		// Render agenda
+		agendaTitle := fmt.Sprintf(" Agenda (%s) ", m.selectedDate.Format("Jan 2, 2006"))
 		agendaBox := agendaBorder.
 			Width(calendarWidth).
 			Height(agendaHeight).
-			Render(lipgloss.NewStyle().Padding(0, 1).Render(" Agenda ") + "\n" + m.agendaView.View())
+			Render(lipgloss.NewStyle().Padding(0, 1).Render(agendaTitle) + "\n" + m.agendaView.View())
 		
 		// Stack calendar on top of agenda
 		main = lipgloss.JoinVertical(lipgloss.Left, calendarBox, agendaBox)
@@ -883,10 +884,11 @@ func (m *Model) View() string {
 			MaxHeight(contentHeight).
 			Render(lipgloss.NewStyle().Padding(0, 1).Render(viewTitle) + "\n" + calendarView)
 		
+		agendaTitle := fmt.Sprintf(" Agenda (%s) ", m.selectedDate.Format("Jan 2, 2006"))
 		agendaBox := agendaBorder.
 			Width(agendaWidth).
 			Height(contentHeight).
-			Render(lipgloss.NewStyle().Padding(0, 1).Render(" Agenda ") + "\n" + m.agendaView.View())
+			Render(lipgloss.NewStyle().Padding(0, 1).Render(agendaTitle) + "\n" + m.agendaView.View())
 		
 		// Combine calendar and agenda side by side
 		main = lipgloss.JoinHorizontal(lipgloss.Top, calendarBox, " ", agendaBox)
