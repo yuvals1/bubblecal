@@ -16,6 +16,6 @@ func buildStatusBar() *tview.TextView {
 }
 
 func renderStatus(today, selected time.Time) string {
-    return fmt.Sprintf(" ◉ Today: %s · Selected: %s · [m] Month [w] Week · [←/→/↑/↓] Move  [Ctrl+U/D] Week/Month  [PgUp/PgDn] Month  [g] Today  [?] Help  [q] Quit",
+    return fmt.Sprintf(" ◉ Today: %s · Selected: %s · [m] Month [w] Week · [←/→/↑/↓] Move  [Ctrl+U/D] Week/Month  [g] Today  [?] Help  [q] Quit",
         today.Format("Mon Jan 2"), selected.Format("Mon Jan 2"))
 }

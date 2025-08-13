@@ -157,10 +157,6 @@ func (a *App) bindKeys() {
             } else {
                 a.uiState.SelectedDate = a.uiState.SelectedDate.AddDate(0, 1, 0)
             }
-        case tcell.KeyPgUp:
-            a.uiState.SelectedDate = a.uiState.SelectedDate.AddDate(0, -1, 0)
-        case tcell.KeyPgDn:
-            a.uiState.SelectedDate = a.uiState.SelectedDate.AddDate(0, 1, 0)
 		default:
 			return ev
 		}
