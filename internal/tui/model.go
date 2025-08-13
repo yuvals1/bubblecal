@@ -615,13 +615,14 @@ func (m *Model) handleCalendarNavigation(msg tea.KeyMsg) tea.Cmd {
 			}
 		}
 	case "d":
-		// Delete selected event in list view
+		// Show delete confirmation modal in list view
 		if m.currentView == ListView {
 			if evt := m.listView.GetSelectedEvent(); evt != nil {
-				if err := storage.DeleteEvent(evt.Date, evt.Event); err == nil {
-					m.listView.LoadEvents()
-					return loadEventsCmd(m.selectedDate)
-				}
+				modal := NewDeleteModal(evt.Date, evt.Event, 0, m.styles)
+				modal.width = m.width
+				modal.height = m.height
+				m.modalStack = append(m.modalStack, modal)
+				return modal.Init()
 			}
 		}
 	}
@@ -646,15 +647,14 @@ func (m *Model) handleAgendaNavigation(msg tea.KeyMsg) tea.Cmd {
 			return modal.Init()
 		}
 	case "d":
-		// Delete selected event directly
+		// Show delete confirmation modal
 		if idx := m.agendaView.GetSelectedIndex(); idx >= 0 && idx < len(m.events) {
 			event := m.events[idx]
-			// Delete the event immediately
-			if err := storage.DeleteEvent(m.selectedDate, event); err == nil {
-				// Reload events after successful deletion
-				m.loadEvents()
-				return loadEventsCmd(m.selectedDate)
-			}
+			modal := NewDeleteModal(m.selectedDate, event, idx, m.styles)
+			modal.width = m.width
+			modal.height = m.height
+			m.modalStack = append(m.modalStack, modal)
+			return modal.Init()
 		}
 	case "h", "left":
 		m.selectedDate = m.selectedDate.AddDate(0, 0, -1)

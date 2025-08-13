@@ -515,16 +515,16 @@ type DeleteModal struct {
 	styles   *Styles
 	width    int
 	height   int
-	selected int // 0 = Delete, 1 = Cancel
+	confirmed bool
 }
 
 func NewDeleteModal(date time.Time, event *model.Event, index int, styles *Styles) *DeleteModal {
 	return &DeleteModal{
-		date:     date,
-		event:    event,
-		index:    index,
-		styles:   styles,
-		selected: 1, // Default to Cancel
+		date:      date,
+		event:     event,
+		index:     index,
+		styles:    styles,
+		confirmed: false,
 	}
 }
 
@@ -540,19 +540,14 @@ func (m *DeleteModal) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		
 	case tea.KeyMsg:
 		switch msg.String() {
-		case "ctrl+c", "esc":
+		case "ctrl+c", "esc", "n", "N":
+			// Cancel without deleting
 			return m, func() tea.Msg { return ModalCloseMsg(true) }
 			
-		case "left", "h":
-			m.selected = 0
-			
-		case "right", "l":
-			m.selected = 1
-			
-		case "enter":
-			if m.selected == 0 {
-				// Delete
-				m.deleteEvent()
+		case "y", "Y", "enter":
+			// Confirm deletion
+			if err := m.deleteEvent(); err == nil {
+				m.confirmed = true
 			}
 			return m, func() tea.Msg { return ModalCloseMsg(true) }
 		}
@@ -571,41 +566,66 @@ func (m *DeleteModal) View() string {
 		return "Loading..."
 	}
 	
-	content := fmt.Sprintf("Delete this event?\n\n%s\n%s",
-		m.event.FormatEventLine(),
-		m.date.Format("Monday, January 2, 2006"))
-	
-	deleteBtn := "[ Delete ]"
-	cancelBtn := "[ Cancel ]"
-	
-	if m.selected == 0 {
-		deleteBtn = lipgloss.NewStyle().
-			Background(lipgloss.Color("196")).
-			Foreground(lipgloss.Color("15")).
-			Bold(true).
-			Render(deleteBtn)
+	// Format event details
+	eventTitle := m.event.Title
+	if m.event.IsAllDay() {
+		eventTitle = fmt.Sprintf("🌅 %s (All Day)", eventTitle)
 	} else {
-		cancelBtn = lipgloss.NewStyle().
-			Background(lipgloss.Color("33")).
-			Foreground(lipgloss.Color("15")).
-			Bold(true).
-			Render(cancelBtn)
+		timeStr := m.event.StartTime
+		if m.event.EndTime != "" {
+			timeStr = fmt.Sprintf("%s - %s", m.event.StartTime, m.event.EndTime)
+		}
+		eventTitle = fmt.Sprintf("🕐 %s (%s)", eventTitle, timeStr)
 	}
 	
-	buttons := lipgloss.JoinHorizontal(lipgloss.Top, deleteBtn, "  ", cancelBtn)
+	if m.event.Category != "" {
+		eventTitle = fmt.Sprintf("%s\n   Category: %s", eventTitle, m.event.Category)
+	}
+	
+	// Build the modal content
+	header := lipgloss.NewStyle().
+		Bold(true).
+		Foreground(lipgloss.Color("196")).
+		Render("⚠️  Confirm Delete")
+	
+	dateStr := lipgloss.NewStyle().
+		Foreground(lipgloss.Color("240")).
+		Render(m.date.Format("Monday, January 2, 2006"))
+	
+	eventBox := lipgloss.NewStyle().
+		Border(lipgloss.NormalBorder()).
+		BorderForeground(lipgloss.Color("240")).
+		Padding(0, 1).
+		Margin(1, 0).
+		Render(eventTitle)
+	
+	question := lipgloss.NewStyle().
+		Bold(true).
+		Render("Delete this event?")
+	
+	instructions := lipgloss.NewStyle().
+		Foreground(lipgloss.Color("240")).
+		Render("[Y]es / [N]o")
+	
+	content := lipgloss.JoinVertical(lipgloss.Center,
+		header,
+		"",
+		dateStr,
+		eventBox,
+		"",
+		question,
+		"",
+		instructions,
+	)
 	
 	modalStyle := lipgloss.NewStyle().
 		Border(lipgloss.RoundedBorder()).
 		BorderForeground(lipgloss.Color("196")).
-		Padding(1, 2).
-		Width(50).
-		Background(lipgloss.Color("235"))
+		Padding(1, 3).
+		Width(60).
+		Background(lipgloss.Color("0"))
 	
-	modal := modalStyle.Render(lipgloss.JoinVertical(lipgloss.Center,
-		content,
-		"",
-		buttons,
-	))
+	modal := modalStyle.Render(content)
 	
 	return lipgloss.Place(m.width, m.height,
 		lipgloss.Center, lipgloss.Center,

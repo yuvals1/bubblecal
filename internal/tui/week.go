@@ -251,7 +251,19 @@ func (w *WeekViewModel) getAllDayEvents(date time.Time) string {
 			if len(title) > maxLen && maxLen > 3 {
 				title = title[:maxLen-1] + "…"
 			}
-			allDayTitles = append(allDayTitles, title)
+			
+			// Get category color
+			categoryColor := lipgloss.Color("15") // Default white
+			if w.config != nil && evt.Category != "" {
+				categoryColor = lipgloss.Color(w.config.GetCategoryColor(evt.Category))
+			}
+			
+			// Apply color to the title
+			coloredTitle := lipgloss.NewStyle().
+				Foreground(categoryColor).
+				Render(title)
+			
+			allDayTitles = append(allDayTitles, coloredTitle)
 		}
 	}
 	
