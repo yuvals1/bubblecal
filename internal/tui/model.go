@@ -389,8 +389,11 @@ func (m *Model) handleAgendaNavigation(msg tea.KeyMsg) tea.Cmd {
 func (m *Model) updateViewSizes() {
 	// Calculate sizes for views based on agenda position
 	if m.agendaBottom {
-		// Agenda at bottom
-		agendaHeight := 10 // Fixed height for bottom agenda
+		// Agenda at bottom - give it more space (about 1/3 of screen)
+		agendaHeight := m.height / 3
+		if agendaHeight < 10 {
+			agendaHeight = 10 // Minimum height
+		}
 		calendarWidth := m.width - 2
 		calendarHeight := m.height - agendaHeight - 4 // Account for header and borders
 		
@@ -490,8 +493,11 @@ func (m *Model) View() string {
 	// Render based on agenda position
 	var main string
 	if m.agendaBottom {
-		// Agenda at bottom layout
-		agendaHeight := 10
+		// Agenda at bottom layout - give it more space (about 1/3 of screen)
+		agendaHeight := m.height / 3
+		if agendaHeight < 10 {
+			agendaHeight = 10 // Minimum height
+		}
 		calendarWidth := m.width - 2
 		calendarHeight := m.height - agendaHeight - 4
 		
