@@ -5,6 +5,15 @@ A fast, keyboard-driven terminal calendar built with Bubble Tea.
 ![Go](https://img.shields.io/badge/Go-1.24.5-blue)
 ![TUI](https://img.shields.io/badge/TUI-Bubble%20Tea-pink)
 
+## Screenshots
+
+<div align="center">
+  <img src="examples/screenshots/Screenshot 2025-08-13 at 20.37.16.png" width="49%" alt="Month View">
+  <img src="examples/screenshots/Screenshot 2025-08-13 at 20.37.27.png" width="49%" alt="Week View">
+  <img src="examples/screenshots/Screenshot 2025-08-13 at 20.37.41.png" width="49%" alt="Day View">
+  <img src="examples/screenshots/Screenshot 2025-08-13 at 20.38.47.png" width="49%" alt="Event Modal">
+</div>
+
 ## Features
 
 - **Three Views**: Month, Week, and Day views with seamless navigation
