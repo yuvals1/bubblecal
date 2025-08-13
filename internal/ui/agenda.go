@@ -83,15 +83,21 @@ func (a *AgendaView) Refresh() {
 	
 	for i, evt := range events {
 		var timeStr string
+		var label string
+		
 		if evt.IsAllDay() {
 			timeStr = "All day"
-		} else if evt.EndTime != "" {
-			timeStr = fmt.Sprintf("%s-%s", evt.StartTime, evt.EndTime)
+			// Style all-day events with cyan color and bold
+			label = fmt.Sprintf("[cyan::b]%s[-::-] %s", timeStr, evt.Title)
 		} else {
-			timeStr = evt.StartTime
+			if evt.EndTime != "" {
+				timeStr = fmt.Sprintf("%s-%s", evt.StartTime, evt.EndTime)
+			} else {
+				timeStr = evt.StartTime
+			}
+			label = fmt.Sprintf("%s %s", timeStr, evt.Title)
 		}
 		
-		label := fmt.Sprintf("%s %s", timeStr, evt.Title)
 		a.list.AddItem(label, "", rune('1'+i), nil)
 	}
 }
