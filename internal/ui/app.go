@@ -184,7 +184,8 @@ func (a *App) bindKeys() {
 		case '?':
 			ShowHelpModal(a.app, a.pages, a.uiState.CurrentView, a.uiState.FocusedPane)
 			return nil
-		case 't':
+		case 't', '.':
+			// Both 't' and '.' go to today
 			a.uiState.SelectedDate = time.Now()
 			a.refreshAll()
 			return nil
