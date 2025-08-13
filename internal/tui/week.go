@@ -65,7 +65,6 @@ func (w *WeekViewModel) View() string {
 			style = style.
 				Background(w.styles.TodayDate.GetBackground()).
 				Foreground(w.styles.TodayDate.GetForeground())
-			label += lipgloss.NewStyle().Foreground(lipgloss.Color("196")).Render(" T")
 		}
 		
 		headerCells = append(headerCells, style.Render(label))

@@ -40,11 +40,8 @@ func (d *DayViewModel) View() string {
 	date := *d.selectedDate
 	var lines []string
 	
-	// Date header with today indicator
+	// Date header
 	headerText := date.Format("Monday, January 2, 2006")
-	if sameDay(date, time.Now()) {
-		headerText += lipgloss.NewStyle().Foreground(lipgloss.Color("196")).Render(" • Today")
-	}
 	dateHeader := lipgloss.NewStyle().
 		Width(d.width - 4).
 		Align(lipgloss.Center).

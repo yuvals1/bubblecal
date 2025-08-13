@@ -465,7 +465,7 @@ func (m *HelpModal) View() string {
 		helpText = append(helpText, "  Ctrl+U/D  Previous/next day")
 	}
 	helpText = append(helpText, "  Tab       Toggle focus (calendar ↔ agenda)")
-	helpText = append(helpText, "  t or .    Go to today")
+	helpText = append(helpText, "  t or .    Go to today (current hour in Week/Day)")
 	helpText = append(helpText, "")
 	
 	helpText = append(helpText, lipgloss.NewStyle().Bold(true).Render("Events:"))

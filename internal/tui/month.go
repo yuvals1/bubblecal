@@ -123,12 +123,7 @@ func (m *MonthViewModel) renderDayCell(date time.Time, otherMonth bool, width in
 		Height(2).
 		Padding(0, 1)
 	
-	// Today marker
-	todayMarker := ""
 	today := time.Now()
-	if sameDay(date, today) {
-		todayMarker = lipgloss.NewStyle().Foreground(lipgloss.Color("196")).Render(" T")
-	}
 	
 	// Apply styling based on date properties
 	if otherMonth {
@@ -175,9 +170,5 @@ func (m *MonthViewModel) renderDayCell(date time.Time, otherMonth bool, width in
 	}
 	
 	// Compose the cell content
-	if todayMarker != "" {
-		// Put today marker inline with day number
-		return style.Render(dayNum + todayMarker + eventInfo)
-	}
 	return style.Render(dayNum + eventInfo)
 }
