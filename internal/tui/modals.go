@@ -38,6 +38,10 @@ func NewEventModalWithTime(date time.Time, event *model.Event, defaultTime strin
 	// Override start time if provided and not editing
 	if defaultTime != "" && event == nil && !m.allDay {
 		m.inputs[inputStartTime].SetValue(defaultTime)
+		// Set end time to one hour after start time
+		if endTime := calculateEndTime(defaultTime); endTime != "" {
+			m.inputs[inputEndTime].SetValue(endTime)
+		}
 	}
 	return m
 }
@@ -88,7 +92,9 @@ func NewEventModal(date time.Time, event *model.Event, styles *Styles) *EventMod
 		m.inputs[inputCategory].SetValue(event.Category)
 		m.inputs[inputDescription].SetValue(event.Description)
 	} else {
+		// Default to 09:00-10:00 for new events
 		m.inputs[inputStartTime].SetValue("09:00")
+		m.inputs[inputEndTime].SetValue("10:00")
 	}
 	
 	return m
@@ -131,6 +137,7 @@ func (m *EventModal) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.inputs[inputEndTime].SetValue("")
 			} else {
 				m.inputs[inputStartTime].SetValue("09:00")
+				m.inputs[inputEndTime].SetValue("10:00")
 			}
 			
 		case "enter":
@@ -523,4 +530,18 @@ func isValidTime(timeStr string) bool {
 		return false
 	}
 	return hour >= 0 && hour <= 23 && min >= 0 && min <= 59
+}
+
+// Helper function to calculate end time (one hour after start)
+func calculateEndTime(startTime string) string {
+	if !isValidTime(startTime) {
+		return ""
+	}
+	var hour, min int
+	fmt.Sscanf(startTime, "%d:%d", &hour, &min)
+	hour++
+	if hour > 23 {
+		hour = 23 // Cap at 23:00
+	}
+	return fmt.Sprintf("%02d:%02d", hour, min)
 }
