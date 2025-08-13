@@ -49,11 +49,13 @@ func (w *WeekView) Refresh() {
 	w.table.SetCell(0, 0, tview.NewTableCell(" ").SetSelectable(false))
 	for d := 0; d < 7; d++ {
 		date := weekStart.AddDate(0, 0, d)
-        label := fmt.Sprintf("%s %d", date.Weekday().String()[:3], date.Day())
+		label := fmt.Sprintf("%s %d", date.Weekday().String()[:3], date.Day())
         style := tcell.StyleDefault
         if sameDay(date, time.Now()) {
             style = style.Background(colorTodayBackground).Foreground(colorTodayText)
-            label = fmt.Sprintf("[::b]%s[::-]", label)
+			label = fmt.Sprintf("[::b]%s[::-]", label)
+			// Add a red "T" marker in the header for today
+			label += " [red]T[::-]"
         }
         cell := tview.NewTableCell(label).SetAlign(tview.AlignCenter).SetStyle(style)
 		w.table.SetCell(0, d+1, cell)
@@ -182,6 +184,8 @@ func (w *WeekView) renderMiniCell(date time.Time, otherMonth bool, weekStart, we
     if sameDay(date, time.Now()) {
         style = style.Background(colorTodayBackground).Foreground(colorTodayText)
         label = fmt.Sprintf("[::b]%s[::-]", label)
+        // Add a red "T" marker like in the Month view
+        label += " [red]T[::-]"
     }
     cell := tview.NewTableCell(label).SetAlign(tview.AlignRight).SetStyle(style)
     return cell
