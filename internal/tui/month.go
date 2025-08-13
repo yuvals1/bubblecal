@@ -141,23 +141,17 @@ func (m *MonthViewModel) getMaxHeightForWeek(dates []time.Time) int {
 	for _, date := range dates {
 		events, _ := storage.LoadDayEvents(date)
 		allDayCount := 0
-		hasTimedEvents := false
 		
 		for _, evt := range events {
 			if evt.IsAllDay() {
 				allDayCount++
-			} else {
-				hasTimedEvents = true
 			}
 		}
 		
 		// Calculate needed height for this cell
 		cellHeight := 2
 		if allDayCount > 0 {
-			cellHeight = 1 + allDayCount
-			if hasTimedEvents {
-				cellHeight++
-			}
+			cellHeight = 1 + allDayCount // 1 for date line + 1 per all-day event
 		}
 		
 		if cellHeight > maxHeight {
@@ -204,6 +198,8 @@ func (m *MonthViewModel) renderDayCellWithHeight(date time.Time, otherMonth bool
 	// Load events
 	events, _ := storage.LoadDayEvents(date)
 	eventInfo := ""
+	dayDisplay := dayNum // Initialize here
+	
 	if len(events) > 0 {
 		// Collect all all-day events
 		var allDayEvents []string
@@ -222,22 +218,19 @@ func (m *MonthViewModel) renderDayCellWithHeight(date time.Time, otherMonth bool
 			}
 		}
 		
-		// Build event info
+		// Add timed event count on same line as date if any
+		if timedEventCount > 0 {
+			dayDisplay += " " + m.styles.EventBadge.Render(fmt.Sprintf("●%d", timedEventCount))
+		}
+		
+		// Add all-day events on separate lines below
 		if len(allDayEvents) > 0 {
-			// Show all-day events on separate lines
 			eventInfo = "\n" + strings.Join(allDayEvents, "\n")
-			// Add timed event count if any
-			if timedEventCount > 0 {
-				eventInfo += "\n" + m.styles.EventBadge.Render(fmt.Sprintf("●%d", timedEventCount))
-			}
-		} else if timedEventCount > 0 {
-			// Only timed events
-			eventInfo = " " + m.styles.EventBadge.Render(fmt.Sprintf("●%d", timedEventCount))
 		}
 	}
 	
 	// Compose the cell content
-	return style.Render(dayNum + eventInfo)
+	return style.Render(dayDisplay + eventInfo)
 }
 
 // Keep the old renderDayCell for compatibility (not used anymore)
@@ -303,6 +296,8 @@ func (m *MonthViewModel) renderDayCell(date time.Time, otherMonth bool, width in
 	
 	// Build events display
 	eventInfo := ""
+	dayDisplay := dayNum // Initialize here
+	
 	if len(events) > 0 {
 		// Collect all all-day events
 		var allDayEvents []string
@@ -321,20 +316,17 @@ func (m *MonthViewModel) renderDayCell(date time.Time, otherMonth bool, width in
 			}
 		}
 		
-		// Build event info
+		// Add timed event count on same line as date if any
+		if timedEventCount > 0 {
+			dayDisplay += " " + m.styles.EventBadge.Render(fmt.Sprintf("●%d", timedEventCount))
+		}
+		
+		// Add all-day events on separate lines below
 		if len(allDayEvents) > 0 {
-			// Show all-day events on separate lines
 			eventInfo = "\n" + strings.Join(allDayEvents, "\n")
-			// Add timed event count if any
-			if timedEventCount > 0 {
-				eventInfo += "\n" + m.styles.EventBadge.Render(fmt.Sprintf("●%d", timedEventCount))
-			}
-		} else if timedEventCount > 0 {
-			// Only timed events
-			eventInfo = " " + m.styles.EventBadge.Render(fmt.Sprintf("●%d", timedEventCount))
 		}
 	}
 	
 	// Compose the cell content
-	return style.Render(dayNum + eventInfo)
+	return style.Render(dayDisplay + eventInfo)
 }
