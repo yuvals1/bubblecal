@@ -10,11 +10,13 @@ import (
 type App struct {
 	app        *tview.Application
 	root       *tview.Flex
-	pages      *tview.Pages
+    pages      *tview.Pages
+    center     *tview.Pages
 	header     *tview.TextView
 	status     *tview.TextView
 
 	monthView  *MonthView
+    weekView   *WeekView
 	agendaView *AgendaView
 
 	uiState    *UIState
@@ -55,9 +57,15 @@ func NewApp() (*App, error) {
 
 	monthView := NewMonthView(uiState)
 	agendaView := NewAgendaView(uiState)
+    weekView := NewWeekView(uiState)
+
+    // Router: pages for month and week
+    centerPages := tview.NewPages()
+    centerPages.AddPage("month", monthView.Primitive(), true, true)
+    centerPages.AddPage("week", weekView.Primitive(), true, false)
 
     mainArea := tview.NewFlex().SetDirection(tview.FlexColumn).
-        AddItem(monthView.Primitive(), 0, 1, true).
+        AddItem(centerPages, 0, 1, true).
         AddItem(agendaView.Primitive(), 30, 0, false)
 
 	pages := tview.NewPages()
@@ -68,20 +76,23 @@ func NewApp() (*App, error) {
 		AddItem(pages, 0, 1, true).
 		AddItem(status, 1, 0, false)
 
-	app := &App{
+    app := &App{
 		app:        application,
 		root:       root,
 		pages:      pages,
+        center:     centerPages,
 		header:     header,
 		status:     status,
 		monthView:  monthView,
+        weekView:   weekView,
+        // keep agenda reference; week view is swapped via centerPages
 		agendaView: agendaView,
 		uiState:    uiState,
 	}
 
 	app.bindKeys()
     app.refreshAll()
-	application.SetRoot(root, true).EnableMouse(true)
+    application.SetRoot(root, true).EnableMouse(true)
 
 	// Keep the table's selection synchronized if the user moves it with arrow keys
 	monthView.table.SetSelectedFunc(func(row, column int) {
@@ -108,6 +119,16 @@ func (a *App) bindKeys() {
 		case '?':
 			ShowHelpModal(a.app, a.pages)
 			return nil
+        case 'w':
+            a.uiState.CurrentView = ViewWeek
+            a.center.SwitchToPage("week")
+            a.refreshAll()
+            return nil
+        case 'm':
+            a.uiState.CurrentView = ViewMonth
+            a.center.SwitchToPage("month")
+            a.refreshAll()
+            return nil
 		case 'g':
 			a.uiState.SelectedDate = time.Now()
             a.refreshAll()
@@ -122,6 +143,20 @@ func (a *App) bindKeys() {
 			a.uiState.SelectedDate = a.uiState.SelectedDate.AddDate(0, 0, -7)
 		case tcell.KeyDown:
 			a.uiState.SelectedDate = a.uiState.SelectedDate.AddDate(0, 0, 7)
+        case tcell.KeyCtrlU:
+            // In week view: go back one week; otherwise, let other widgets handle it
+            if a.uiState.CurrentView == ViewWeek {
+                a.uiState.SelectedDate = a.uiState.SelectedDate.AddDate(0, 0, -7)
+            } else {
+                return ev
+            }
+        case tcell.KeyCtrlD:
+            // In week view: go forward one week; otherwise, let other widgets handle it
+            if a.uiState.CurrentView == ViewWeek {
+                a.uiState.SelectedDate = a.uiState.SelectedDate.AddDate(0, 0, 7)
+            } else {
+                return ev
+            }
 		case tcell.KeyPgUp:
 			a.uiState.SelectedDate = a.uiState.SelectedDate.AddDate(0, -1, 0)
 		case tcell.KeyPgDn:
@@ -138,5 +173,8 @@ func (a *App) refreshAll() {
     a.header.SetText(renderHeader(a.uiState.SelectedDate))
     a.status.SetText(renderStatus(time.Now(), a.uiState.SelectedDate))
     a.monthView.Refresh()
+    if a.weekView != nil {
+        a.weekView.Refresh()
+    }
     a.agendaView.Refresh()
 }
