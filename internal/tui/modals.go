@@ -149,12 +149,16 @@ func (m *EventModal) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return newModel, cmd
 			
 		case " ":
+			// Only handle space for non-text fields
 			if m.focusedField == FieldAllDay {
 				m.toggleAllDay()
+				return m, nil
 			} else if m.focusedField == FieldCategory {
 				m.categoryMode = !m.categoryMode
+				return m, nil
 			}
-			return m, nil
+			// Fall through to default for text inputs
+			fallthrough
 			
 		default:
 			// Handle text input
