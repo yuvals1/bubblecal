@@ -102,8 +102,8 @@ func (d *DayView) Refresh() {
 				} else {
 					eventText = fmt.Sprintf("%s %s", evt.StartTime, evt.Title)
 				}
-				if len(evt.Categories) > 0 {
-					eventText += fmt.Sprintf(" [%s]", strings.Join(evt.Categories, ","))
+				if evt.Category != "" {
+					eventText += fmt.Sprintf(" [%s]", evt.Category)
 				}
 				hourEvents[hour] = append(hourEvents[hour], eventText)
 			}

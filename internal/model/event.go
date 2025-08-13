@@ -7,10 +7,11 @@ import (
 )
 
 type Event struct {
-	StartTime  string   // "09:00", "all-day"
-	EndTime    string   // "10:00", "" for single time or all-day
-	Title      string
-	Categories []string
+	StartTime   string // "09:00", "all-day"
+	EndTime     string // "10:00", "" for single time or all-day
+	Title       string
+	Category    string // Single category field (was []string)
+	Description string // New field for event description
 }
 
 // ParseEventLine parses a line from a day file into an Event
@@ -30,7 +31,7 @@ func ParseEventLine(line string) (*Event, error) {
 		event.StartTime = "all-day"
 		event.EndTime = ""
 		remainder := strings.TrimPrefix(line, "all-day ")
-		event.Title, event.Categories = extractTitleAndCategories(remainder)
+		event.Title, event.Category = extractTitleAndCategories(remainder)
 		return event, nil
 	}
 
@@ -57,12 +58,12 @@ func ParseEventLine(line string) (*Event, error) {
 	}
 
 	// Extract title and categories from remainder
-	event.Title, event.Categories = extractTitleAndCategories(remainder)
+	event.Title, event.Category = extractTitleAndCategories(remainder)
 
 	return event, nil
 }
 
-func extractTitleAndCategories(text string) (string, []string) {
+func extractTitleAndCategories(text string) (string, string) {
 	// Look for categories in brackets at the end
 	if idx := strings.LastIndex(text, "["); idx != -1 {
 		title := strings.TrimSpace(text[:idx])
@@ -72,21 +73,12 @@ func extractTitleAndCategories(text string) (string, []string) {
 		catPart = strings.TrimPrefix(catPart, "[")
 		catPart = strings.TrimSuffix(catPart, "]")
 		
-		// Split categories
-		var categories []string
-		if catPart != "" {
-			for _, cat := range strings.Split(catPart, ",") {
-				if trimmed := strings.TrimSpace(cat); trimmed != "" {
-					categories = append(categories, trimmed)
-				}
-			}
-		}
-		
-		return title, categories
+		// For now, join multiple categories with comma (legacy support)
+		return title, strings.TrimSpace(catPart)
 	}
 	
 	// No categories found
-	return strings.TrimSpace(text), nil
+	return strings.TrimSpace(text), ""
 }
 
 // FormatEventLine formats an Event back into a line for saving
@@ -102,8 +94,8 @@ func (e *Event) FormatEventLine() string {
 
 	result := fmt.Sprintf("%s %s", timePart, e.Title)
 	
-	if len(e.Categories) > 0 {
-		result += fmt.Sprintf(" [%s]", strings.Join(e.Categories, ","))
+	if e.Category != "" {
+		result += fmt.Sprintf(" [%s]", e.Category)
 	}
 	
 	return result
@@ -123,4 +115,89 @@ func (e *Event) GetStartTime() (time.Time, error) {
 	
 	// Parse as HH:MM
 	return time.Parse("15:04", e.StartTime)
+}
+
+// GenerateFilename creates a filename for this event
+// Format: "HHMM-HHMM-title" or "allday-title"
+func (e *Event) GenerateFilename() string {
+	// Sanitize title for filename (replace spaces and special chars)
+	safeTitle := strings.ReplaceAll(e.Title, " ", "_")
+	safeTitle = strings.ReplaceAll(safeTitle, "/", "-")
+	safeTitle = strings.ReplaceAll(safeTitle, ":", "-")
+	safeTitle = strings.ReplaceAll(safeTitle, "\\", "-")
+	safeTitle = strings.ReplaceAll(safeTitle, "?", "")
+	safeTitle = strings.ReplaceAll(safeTitle, "*", "")
+	safeTitle = strings.ReplaceAll(safeTitle, "\"", "")
+	safeTitle = strings.ReplaceAll(safeTitle, "<", "")
+	safeTitle = strings.ReplaceAll(safeTitle, ">", "")
+	safeTitle = strings.ReplaceAll(safeTitle, "|", "")
+	
+	if e.IsAllDay() {
+		return fmt.Sprintf("allday-%s", safeTitle)
+	}
+	
+	// Format times without colons for filename
+	start := strings.ReplaceAll(e.StartTime, ":", "")
+	if e.EndTime != "" {
+		end := strings.ReplaceAll(e.EndTime, ":", "")
+		return fmt.Sprintf("%s-%s-%s", start, end, safeTitle)
+	}
+	return fmt.Sprintf("%s-%s", start, safeTitle)
+}
+
+// ParseEventFromFilename parses event details from a filename and file content
+func ParseEventFromFilename(filename string, content string) (*Event, error) {
+	event := &Event{}
+	
+	// Parse category and description from content
+	lines := strings.Split(content, "\n")
+	for _, line := range lines {
+		line = strings.TrimSpace(line)
+		if strings.HasPrefix(line, "category:") {
+			event.Category = strings.TrimSpace(strings.TrimPrefix(line, "category:"))
+		} else if strings.HasPrefix(line, "description:") {
+			event.Description = strings.TrimSpace(strings.TrimPrefix(line, "description:"))
+		}
+	}
+	
+	// Check if it's an all-day event
+	if strings.HasPrefix(filename, "allday-") {
+		event.StartTime = "all-day"
+		event.EndTime = ""
+		titlePart := strings.TrimPrefix(filename, "allday-")
+		event.Title = strings.ReplaceAll(titlePart, "_", " ")
+		return event, nil
+	}
+	
+	// Parse timed event: HHMM-HHMM-title or HHMM-title
+	parts := strings.SplitN(filename, "-", 3)
+	if len(parts) < 2 {
+		return nil, fmt.Errorf("invalid filename format: %s", filename)
+	}
+	
+	// First part is start time
+	if len(parts[0]) == 4 {
+		event.StartTime = fmt.Sprintf("%s:%s", parts[0][:2], parts[0][2:])
+	} else {
+		return nil, fmt.Errorf("invalid start time in filename: %s", parts[0])
+	}
+	
+	// Check if second part is end time or title
+	if len(parts[1]) == 4 && len(parts) > 2 {
+		// It's an end time
+		event.EndTime = fmt.Sprintf("%s:%s", parts[1][:2], parts[1][2:])
+		event.Title = strings.ReplaceAll(parts[2], "_", " ")
+	} else {
+		// It's part of the title
+		event.EndTime = ""
+		titleParts := parts[1:]
+		event.Title = strings.ReplaceAll(strings.Join(titleParts, "-"), "_", " ")
+	}
+	
+	return event, nil
+}
+
+// FormatFileContent formats the event's content for saving to file
+func (e *Event) FormatFileContent() string {
+	return fmt.Sprintf("category:%s\ndescription:%s\n", e.Category, e.Description)
 }

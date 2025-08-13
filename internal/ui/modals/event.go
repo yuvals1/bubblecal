@@ -28,7 +28,8 @@ func ShowNewEventModal(app *tview.Application, pages *tview.Pages, date time.Tim
 	form.AddInputField("Start Time", defaultStartTime, 10, nil, nil)
 	form.AddInputField("End Time (optional)", "", 10, nil, nil)
 	form.AddCheckbox("All Day", false, nil)
-	form.AddInputField("Categories (comma-separated)", "", 30, nil, nil)
+	form.AddInputField("Category", "", 30, nil, nil)
+	form.AddTextArea("Description", "", 40, 3, 200, nil)
 	
 	// Handle all-day checkbox
 	form.GetFormItemByLabel("All Day").(*tview.Checkbox).SetChangedFunc(func(checked bool) {
@@ -53,7 +54,8 @@ func ShowNewEventModal(app *tview.Application, pages *tview.Pages, date time.Tim
 		startTime := form.GetFormItemByLabel("Start Time").(*tview.InputField).GetText()
 		endTime := form.GetFormItemByLabel("End Time (optional)").(*tview.InputField).GetText()
 		allDay := form.GetFormItemByLabel("All Day").(*tview.Checkbox).IsChecked()
-		categoriesStr := form.GetFormItemByLabel("Categories (comma-separated)").(*tview.InputField).GetText()
+		categoryStr := form.GetFormItemByLabel("Category").(*tview.InputField).GetText()
+		description := form.GetFormItemByLabel("Description").(*tview.TextArea).GetText()
 		
 		// Validate
 		if strings.TrimSpace(title) == "" {
@@ -63,7 +65,8 @@ func ShowNewEventModal(app *tview.Application, pages *tview.Pages, date time.Tim
 		
 		// Create event
 		event := &model.Event{
-			Title: title,
+			Title:       title,
+			Description: "",
 		}
 		
 		if allDay {
@@ -78,14 +81,9 @@ func ShowNewEventModal(app *tview.Application, pages *tview.Pages, date time.Tim
 			event.EndTime = endTime
 		}
 		
-		// Parse categories
-		if categoriesStr != "" {
-			for _, cat := range strings.Split(categoriesStr, ",") {
-				if trimmed := strings.TrimSpace(cat); trimmed != "" {
-					event.Categories = append(event.Categories, trimmed)
-				}
-			}
-		}
+		// Parse category and description
+		event.Category = strings.TrimSpace(categoryStr)
+		event.Description = strings.TrimSpace(description)
 		
 		// Save event
 		if err := saveEvent(date, event); err != nil {
@@ -126,7 +124,7 @@ func ShowNewEventModal(app *tview.Application, pages *tview.Pages, date time.Tim
 		AddItem(nil, 0, 1, false).
 		AddItem(tview.NewFlex().SetDirection(tview.FlexRow).
 			AddItem(nil, 0, 1, false).
-			AddItem(form, 15, 1, true).
+			AddItem(form, 18, 1, true).
 			AddItem(nil, 0, 1, false), 60, 1, true).
 		AddItem(nil, 0, 1, false)
 	
@@ -167,7 +165,8 @@ func ShowEditEventModal(app *tview.Application, pages *tview.Pages, date time.Ti
 	form.AddInputField("Start Time", startTime, 10, nil, nil)
 	form.AddInputField("End Time (optional)", event.EndTime, 10, nil, nil)
 	form.AddCheckbox("All Day", isAllDay, nil)
-	form.AddInputField("Categories (comma-separated)", strings.Join(event.Categories, ","), 30, nil, nil)
+	form.AddInputField("Category", event.Category, 30, nil, nil)
+	form.AddTextArea("Description", event.Description, 40, 3, 200, nil)
 	
 	// Handle all-day checkbox
 	form.GetFormItemByLabel("All Day").(*tview.Checkbox).SetChangedFunc(func(checked bool) {
@@ -200,7 +199,8 @@ func ShowEditEventModal(app *tview.Application, pages *tview.Pages, date time.Ti
 		startTime := form.GetFormItemByLabel("Start Time").(*tview.InputField).GetText()
 		endTime := form.GetFormItemByLabel("End Time (optional)").(*tview.InputField).GetText()
 		allDay := form.GetFormItemByLabel("All Day").(*tview.Checkbox).IsChecked()
-		categoriesStr := form.GetFormItemByLabel("Categories (comma-separated)").(*tview.InputField).GetText()
+		categoryStr := form.GetFormItemByLabel("Category").(*tview.InputField).GetText()
+		description := form.GetFormItemByLabel("Description").(*tview.TextArea).GetText()
 		
 		// Validate
 		if strings.TrimSpace(title) == "" {
@@ -223,15 +223,9 @@ func ShowEditEventModal(app *tview.Application, pages *tview.Pages, date time.Ti
 			event.EndTime = endTime
 		}
 		
-		// Parse categories
-		event.Categories = nil
-		if categoriesStr != "" {
-			for _, cat := range strings.Split(categoriesStr, ",") {
-				if trimmed := strings.TrimSpace(cat); trimmed != "" {
-					event.Categories = append(event.Categories, trimmed)
-				}
-			}
-		}
+		// Parse category and description
+		event.Category = strings.TrimSpace(categoryStr)
+		event.Description = strings.TrimSpace(description)
 		
 		// Save updated events
 		if err := updateEvent(date, index, event); err != nil {
@@ -272,7 +266,7 @@ func ShowEditEventModal(app *tview.Application, pages *tview.Pages, date time.Ti
 		AddItem(nil, 0, 1, false).
 		AddItem(tview.NewFlex().SetDirection(tview.FlexRow).
 			AddItem(nil, 0, 1, false).
-			AddItem(form, 15, 1, true).
+			AddItem(form, 18, 1, true).
 			AddItem(nil, 0, 1, false), 60, 1, true).
 		AddItem(nil, 0, 1, false)
 	

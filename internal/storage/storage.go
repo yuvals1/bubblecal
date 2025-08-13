@@ -1,13 +1,11 @@
 package storage
 
 import (
-	"bufio"
 	"fmt"
 	"os"
 	"path/filepath"
 	"simple-tui-cal/internal/model"
 	"sort"
-	"strings"
 	"time"
 )
 
@@ -37,57 +35,9 @@ func EnsureDirectories() error {
 	return os.MkdirAll(daysDir, 0755)
 }
 
-// LoadDayEvents loads events from a day file
+// LoadDayEvents loads events from a day directory (new format)
 func LoadDayEvents(date time.Time) ([]*model.Event, error) {
-	filePath := GetDayFilePath(date)
-	
-	// If file doesn't exist, return empty list (no events)
-	if _, err := os.Stat(filePath); os.IsNotExist(err) {
-		return []*model.Event{}, nil
-	}
-	
-	file, err := os.Open(filePath)
-	if err != nil {
-		return nil, fmt.Errorf("failed to open day file: %w", err)
-	}
-	defer file.Close()
-	
-	var events []*model.Event
-	scanner := bufio.NewScanner(file)
-	lineNum := 0
-	
-	for scanner.Scan() {
-		lineNum++
-		line := strings.TrimSpace(scanner.Text())
-		
-		// Skip empty lines
-		if line == "" {
-			continue
-		}
-		
-		// Skip comment lines (starting with #)
-		if strings.HasPrefix(line, "#") {
-			continue
-		}
-		
-		event, err := model.ParseEventLine(line)
-		if err != nil {
-			// Log error but continue loading other events
-			fmt.Fprintf(os.Stderr, "Warning: line %d in %s: %v\n", lineNum, filePath, err)
-			continue
-		}
-		
-		events = append(events, event)
-	}
-	
-	if err := scanner.Err(); err != nil {
-		return nil, fmt.Errorf("error reading day file: %w", err)
-	}
-	
-	// Events should already be sorted in the file, but we can verify
-	sortEvents(events)
-	
-	return events, nil
+	return LoadDayEventsNew(date)
 }
 
 // sortEvents sorts events by time (all-day events go to the end)
@@ -120,55 +70,23 @@ func sortEvents(events []*model.Event) {
 	})
 }
 
-// SaveDayEvents saves events to a day file (for future use)
+// SaveDayEvents saves events to day directory (new format)
+// This is a compatibility layer that saves all events at once
 func SaveDayEvents(date time.Time, events []*model.Event) error {
-	// Ensure directories exist
-	if err := EnsureDirectories(); err != nil {
-		return fmt.Errorf("failed to create directories: %w", err)
-	}
-	
-	filePath := GetDayFilePath(date)
-	
-	// Sort events before saving
-	sortEvents(events)
-	
-	// If no events, remove the file
-	if len(events) == 0 {
-		os.Remove(filePath) // Ignore error if file doesn't exist
-		return nil
-	}
-	
-	// Write to temporary file first (atomic write)
-	tmpPath := filePath + ".tmp"
-	file, err := os.Create(tmpPath)
-	if err != nil {
-		return fmt.Errorf("failed to create temp file: %w", err)
-	}
-	
-	writer := bufio.NewWriter(file)
-	for _, event := range events {
-		if _, err := writer.WriteString(event.FormatEventLine() + "\n"); err != nil {
-			file.Close()
-			os.Remove(tmpPath)
-			return fmt.Errorf("failed to write event: %w", err)
+	// First, clear existing events for this day
+	dirPath := GetDayDirPath(date)
+	if _, err := os.Stat(dirPath); err == nil {
+		// Directory exists, remove it to clear all events
+		if err := os.RemoveAll(dirPath); err != nil {
+			return fmt.Errorf("failed to clear existing events: %w", err)
 		}
 	}
 	
-	if err := writer.Flush(); err != nil {
-		file.Close()
-		os.Remove(tmpPath)
-		return fmt.Errorf("failed to flush writer: %w", err)
-	}
-	
-	if err := file.Close(); err != nil {
-		os.Remove(tmpPath)
-		return fmt.Errorf("failed to close file: %w", err)
-	}
-	
-	// Atomic rename
-	if err := os.Rename(tmpPath, filePath); err != nil {
-		os.Remove(tmpPath)
-		return fmt.Errorf("failed to rename temp file: %w", err)
+	// Save each event
+	for _, event := range events {
+		if err := SaveEventNew(date, event); err != nil {
+			return fmt.Errorf("failed to save event: %w", err)
+		}
 	}
 	
 	return nil
