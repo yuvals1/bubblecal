@@ -61,6 +61,18 @@ func (a *AgendaViewModel) MoveDown() {
 	}
 }
 
+func (a *AgendaViewModel) GoToTop() {
+	a.selectedIndex = 0
+	a.scrollOffset = 0
+}
+
+func (a *AgendaViewModel) GoToBottom() {
+	if len(a.events) > 0 {
+		a.selectedIndex = len(a.events) - 1
+		a.ensureVisible()
+	}
+}
+
 func (a *AgendaViewModel) GetSelectedEvent() *model.Event {
 	if a.selectedIndex >= 0 && a.selectedIndex < len(a.events) {
 		return a.events[a.selectedIndex]

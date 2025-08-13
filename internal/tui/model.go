@@ -61,6 +61,9 @@ type Model struct {
 	jumpKeys     []string
 	jumpTargets  []time.Time
 	
+	// Key tracking for double-key combinations
+	lastKey      string
+	
 	// Config
 	config       *config.Config
 	
@@ -272,6 +275,30 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m.handleJumpMode(msg.String()), nil
 		}
 		
+		// Handle double key combinations (gg)
+		if msg.String() == "g" {
+			if m.lastKey == "g" {
+				// gg - go to top
+				if m.focusedPane == CalendarPane {
+					if m.currentView == ListView {
+						m.listView.GoToTop()
+					}
+				} else {
+					// Agenda pane
+					m.agendaView.GoToTop()
+				}
+				m.lastKey = ""
+				return m, nil
+			}
+			m.lastKey = "g"
+			return m, nil
+		}
+		
+		// Clear lastKey if it's not a follow-up g
+		if m.lastKey == "g" && msg.String() != "g" {
+			m.lastKey = ""
+		}
+		
 		switch msg.String() {
 		case "ctrl+c", "q":
 			return m, tea.Quit
@@ -394,6 +421,17 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			// Save the preference
 			m.config.Theme = int(m.currentTheme)
 			m.config.Save()
+			
+		case "G":
+			// Go to bottom
+			if m.focusedPane == CalendarPane {
+				if m.currentView == ListView {
+					m.listView.GoToBottom()
+				}
+			} else {
+				// Agenda pane
+				m.agendaView.GoToBottom()
+			}
 			
 		case "?":
 			// Show help

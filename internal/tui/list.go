@@ -103,6 +103,18 @@ func (l *ListViewModel) MoveDown() {
 	}
 }
 
+func (l *ListViewModel) GoToTop() {
+	l.selectedIndex = 0
+	l.scrollOffset = 0
+}
+
+func (l *ListViewModel) GoToBottom() {
+	if len(l.flatEvents) > 0 {
+		l.selectedIndex = len(l.flatEvents) - 1
+		l.ensureVisible()
+	}
+}
+
 func (l *ListViewModel) PageUp() {
 	pageSize := l.height / 3
 	if pageSize < 5 {
