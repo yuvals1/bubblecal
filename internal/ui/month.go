@@ -119,13 +119,9 @@ func (m *MonthView) renderDayCell(date time.Time, otherMonth bool) *tview.TableC
 		style = style.Background(colorSelectedBackground).Foreground(colorSelectedText)
 	}
 
-    // Today: emphasize with background/text color; if not selected, add underline too
+    // Today: emphasize with background/text color
     if sameDay(date, time.Now()) {
         style = style.Background(colorTodayBackground).Foreground(colorTodayText)
-        if !sameDay(date, m.uiState.SelectedDate) {
-            label = fmt.Sprintf("[::u]%s[::-]", label)
-            style = style.Underline(true)
-        }
     }
 
 	// Placeholder for event count badge (mock)
@@ -133,6 +129,11 @@ func (m *MonthView) renderDayCell(date time.Time, otherMonth bool) *tview.TableC
 	if cnt := mockEventCount(date); cnt > 0 {
 		badge = fmt.Sprintf(" [green]●%d[::-]", cnt)
 	}
+
+    // Add a red "T" marker to clearly denote today
+    if sameDay(date, time.Now()) {
+        label += " [red]T[::-]"
+    }
 
     cell := tview.NewTableCell(label + badge)
     cell.SetAlign(tview.AlignLeft).SetStyle(style).SetExpansion(1)
