@@ -2,6 +2,7 @@ package tui
 
 import (
 	"fmt"
+	"bubblecal/internal/config"
 	"bubblecal/internal/model"
 	"strings"
 	"time"
@@ -18,14 +19,16 @@ type AgendaViewModel struct {
 	width         int
 	height        int
 	scrollOffset  int
+	config        *config.Config // Added to access categories
 }
 
 // NewAgendaViewModel creates a new agenda view model
-func NewAgendaViewModel(selectedDate *time.Time, styles *Styles) *AgendaViewModel {
+func NewAgendaViewModel(selectedDate *time.Time, styles *Styles, config *config.Config) *AgendaViewModel {
 	return &AgendaViewModel{
 		selectedDate:  selectedDate,
 		styles:        styles,
 		selectedIndex: 0,
+		config:        config,
 	}
 }
 
@@ -150,12 +153,26 @@ func (a *AgendaViewModel) View() string {
 func (a *AgendaViewModel) renderEventLine(evt *model.Event, selected bool) string {
 	var label string
 	
+	// Get category color
+	categoryColor := "#808080" // Default gray
+	if a.config != nil && evt.Category != "" {
+		categoryColor = a.config.GetCategoryColor(evt.Category)
+	}
+	
+	// Create category indicator
+	categoryIndicator := ""
+	if evt.Category != "" {
+		categoryIndicator = lipgloss.NewStyle().
+			Foreground(lipgloss.Color(categoryColor)).
+			Render("● ")
+	}
+	
 	if evt.IsAllDay() {
 		// Use green for all-day text
 		allDayText := lipgloss.NewStyle().
 			Foreground(lipgloss.Color("34")).
 			Render("All day")
-		label = fmt.Sprintf("%s %s", allDayText, evt.Title)
+		label = fmt.Sprintf("%s%s %s", categoryIndicator, allDayText, evt.Title)
 	} else {
 		var timeStr string
 		if evt.EndTime != "" {
@@ -165,7 +182,7 @@ func (a *AgendaViewModel) renderEventLine(evt *model.Event, selected bool) strin
 		}
 		// Use dimmer color for time
 		timeStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("245"))
-		label = fmt.Sprintf("%s %s", timeStyle.Render(timeStr), evt.Title)
+		label = fmt.Sprintf("%s%s %s", categoryIndicator, timeStyle.Render(timeStr), evt.Title)
 	}
 	
 	// Build the final string with selection indicator

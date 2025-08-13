@@ -2,6 +2,7 @@ package tui
 
 import (
 	"fmt"
+	"bubblecal/internal/config"
 	"bubblecal/internal/model"
 	"bubblecal/internal/storage"
 	"strings"
@@ -14,27 +15,29 @@ import (
 
 // EventModal for creating/editing events
 type EventModal struct {
-	date         time.Time
-	editingEvent *model.Event
-	inputs       []textinput.Model
-	focusIndex   int
-	allDay       bool
-	styles       *Styles
-	width        int
-	height       int
-	errorMsg     string // Display error messages
+	date            time.Time
+	editingEvent    *model.Event
+	inputs          []textinput.Model
+	focusIndex      int
+	allDay          bool
+	styles          *Styles
+	width           int
+	height          int
+	errorMsg        string // Display error messages
+	categories      []config.Category
+	selectedCatIdx  int  // Selected category index
+	categoryMode    bool // True when selecting category
 }
 
 const (
 	inputTitle = iota
 	inputStartTime
 	inputEndTime
-	inputCategory
 	inputDescription
 )
 
-func NewEventModalWithTime(date time.Time, event *model.Event, defaultTime string, styles *Styles) *EventModal {
-	m := NewEventModal(date, event, styles)
+func NewEventModalWithTime(date time.Time, event *model.Event, defaultTime string, styles *Styles, categories []config.Category) *EventModal {
+	m := NewEventModal(date, event, styles, categories)
 	// Override start time if provided and not editing
 	if defaultTime != "" && event == nil && !m.allDay {
 		m.inputs[inputStartTime].SetValue(defaultTime)
@@ -46,12 +49,13 @@ func NewEventModalWithTime(date time.Time, event *model.Event, defaultTime strin
 	return m
 }
 
-func NewEventModal(date time.Time, event *model.Event, styles *Styles) *EventModal {
+func NewEventModal(date time.Time, event *model.Event, styles *Styles, categories []config.Category) *EventModal {
 	m := &EventModal{
 		date:         date,
 		editingEvent: event,
 		styles:       styles,
-		inputs:       make([]textinput.Model, 5),
+		inputs:       make([]textinput.Model, 4), // Reduced from 5 to 4 (removed category input)
+		categories:   categories,
 	}
 	
 	// Initialize inputs
@@ -72,10 +76,6 @@ func NewEventModal(date time.Time, event *model.Event, styles *Styles) *EventMod
 	m.inputs[inputEndTime].Placeholder = "10:00 (optional)"
 	m.inputs[inputEndTime].CharLimit = 5
 	
-	// Category input
-	m.inputs[inputCategory].Placeholder = "work, personal, etc."
-	m.inputs[inputCategory].CharLimit = 50
-	
 	// Description input
 	m.inputs[inputDescription].Placeholder = "Event description (optional)"
 	m.inputs[inputDescription].CharLimit = 200
@@ -89,7 +89,13 @@ func NewEventModal(date time.Time, event *model.Event, styles *Styles) *EventMod
 		} else {
 			m.allDay = true
 		}
-		m.inputs[inputCategory].SetValue(event.Category)
+		// Find the category index
+		for i, cat := range m.categories {
+			if cat.Name == event.Category {
+				m.selectedCatIdx = i
+				break
+			}
+		}
 		m.inputs[inputDescription].SetValue(event.Description)
 	} else {
 		// Default to 09:00-10:00 for new events
@@ -113,19 +119,37 @@ func (m *EventModal) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case tea.KeyMsg:
 		switch msg.String() {
 		case "ctrl+c", "esc":
+			if m.categoryMode {
+				m.categoryMode = false
+				return m, nil
+			}
 			return m, func() tea.Msg { return ModalCloseMsg(true) }
 			
 		case "tab", "down":
+			if m.categoryMode {
+				m.selectedCatIdx++
+				if m.selectedCatIdx >= len(m.categories) {
+					m.selectedCatIdx = 0
+				}
+				return m, nil
+			}
 			m.focusIndex++
-			if m.focusIndex >= len(m.inputs) {
+			if m.focusIndex >= len(m.inputs)+1 { // +1 for category field
 				m.focusIndex = 0
 			}
 			m.updateFocus()
 			
 		case "shift+tab", "up":
+			if m.categoryMode {
+				m.selectedCatIdx--
+				if m.selectedCatIdx < 0 {
+					m.selectedCatIdx = len(m.categories) - 1
+				}
+				return m, nil
+			}
 			m.focusIndex--
 			if m.focusIndex < 0 {
-				m.focusIndex = len(m.inputs) - 1
+				m.focusIndex = len(m.inputs) // Set to category field
 			}
 			m.updateFocus()
 			
@@ -141,6 +165,15 @@ func (m *EventModal) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 			
 		case "enter":
+			if m.categoryMode {
+				m.categoryMode = false
+				return m, nil
+			}
+			// If focus is on category field, open category selector
+			if m.focusIndex == len(m.inputs) {
+				m.categoryMode = true
+				return m, nil
+			}
 			// Save the event from any field
 			if err := m.saveEvent(); err == nil {
 				return m, func() tea.Msg { return ModalCloseMsg(true) }
@@ -177,9 +210,15 @@ func (m *EventModal) saveEvent() error {
 		return fmt.Errorf("title cannot be empty")
 	}
 	
+	// Get selected category name
+	categoryName := ""
+	if m.selectedCatIdx < len(m.categories) {
+		categoryName = m.categories[m.selectedCatIdx].Name
+	}
+	
 	event := &model.Event{
 		Title:       title,
-		Category:    strings.TrimSpace(m.inputs[inputCategory].Value()),
+		Category:    categoryName,
 		Description: strings.TrimSpace(m.inputs[inputDescription].Value()),
 	}
 	
@@ -247,9 +286,42 @@ func (m *EventModal) View() string {
 		fields = append(fields, "")
 	}
 	
-	// Category field
-	fields = append(fields, "Category:")
-	fields = append(fields, m.inputs[inputCategory].View())
+	// Category field - show selector
+	fields = append(fields, "Category: (Enter to select)")
+	
+	if m.categoryMode {
+		// Show category list
+		catList := ""
+		for i, cat := range m.categories {
+			colorStyle := lipgloss.NewStyle().Foreground(lipgloss.Color(cat.Color))
+			catName := colorStyle.Render(fmt.Sprintf("● %s", cat.Name))
+			if i == m.selectedCatIdx {
+				catName = lipgloss.NewStyle().
+					Background(lipgloss.Color("238")).
+					Foreground(lipgloss.Color(cat.Color)).
+					Bold(true).
+					Render(fmt.Sprintf(" ▶ %s ", cat.Name))
+			}
+			catList += catName + "\n"
+		}
+		fields = append(fields, catList)
+	} else {
+		// Show selected category
+		selectedCat := "(none)"
+		if m.selectedCatIdx < len(m.categories) {
+			cat := m.categories[m.selectedCatIdx]
+			colorStyle := lipgloss.NewStyle().Foreground(lipgloss.Color(cat.Color))
+			selectedCat = colorStyle.Render(fmt.Sprintf("● %s", cat.Name))
+		}
+		// Highlight if focused
+		if m.focusIndex == len(m.inputs) {
+			selectedCat = lipgloss.NewStyle().
+				Background(lipgloss.Color("238")).
+				Padding(0, 1).
+				Render(selectedCat)
+		}
+		fields = append(fields, selectedCat)
+	}
 	fields = append(fields, "")
 	
 	// Description field

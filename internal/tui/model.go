@@ -193,11 +193,11 @@ func NewModel() *Model {
 	}
 	
 	// Initialize views
-	m.monthView = NewMonthViewModel(&m.selectedDate, m.styles)
+	m.monthView = NewMonthViewModel(&m.selectedDate, m.styles, cfg)
 	m.weekView = NewWeekViewModel(&m.selectedDate, &m.selectedHour, m.styles)
 	m.weekView.SetShowMiniMonth(m.showMiniMonth)
 	m.dayView = NewDayViewModel(&m.selectedDate, &m.selectedHour, m.styles)
-	m.agendaView = NewAgendaViewModel(&m.selectedDate, m.styles)
+	m.agendaView = NewAgendaViewModel(&m.selectedDate, m.styles, cfg)
 	
 	// Load initial events
 	m.loadEvents()
@@ -330,7 +330,7 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					defaultTime = m.dayView.GetSelectedHour()
 				}
 			}
-			modal := NewEventModalWithTime(m.selectedDate, nil, defaultTime, m.styles)
+			modal := NewEventModalWithTime(m.selectedDate, nil, defaultTime, m.styles, m.config.Categories)
 			// Set modal window size
 			modal.width = m.width
 			modal.height = m.height
@@ -457,7 +457,7 @@ func (m *Model) handleAgendaNavigation(msg tea.KeyMsg) tea.Cmd {
 		// Edit selected event
 		if idx := m.agendaView.GetSelectedIndex(); idx >= 0 && idx < len(m.events) {
 			event := m.events[idx]
-			modal := NewEventModal(m.selectedDate, event, m.styles)
+			modal := NewEventModal(m.selectedDate, event, m.styles, m.config.Categories)
 			// Set modal window size
 			modal.width = m.width
 			modal.height = m.height
@@ -491,7 +491,7 @@ func (m *Model) updateViewStyles() {
 	// Update all views with new styles
 	if m.monthView != nil {
 		width, height := m.monthView.width, m.monthView.height
-		m.monthView = NewMonthViewModel(&m.selectedDate, m.styles)
+		m.monthView = NewMonthViewModel(&m.selectedDate, m.styles, m.config)
 		m.monthView.SetSize(width, height)
 	}
 	if m.weekView != nil {
@@ -510,7 +510,7 @@ func (m *Model) updateViewStyles() {
 		width, height := m.agendaView.width, m.agendaView.height
 		events := m.agendaView.events
 		selectedIndex := m.agendaView.selectedIndex
-		m.agendaView = NewAgendaViewModel(&m.selectedDate, m.styles)
+		m.agendaView = NewAgendaViewModel(&m.selectedDate, m.styles, m.config)
 		m.agendaView.SetEvents(events)
 		m.agendaView.selectedIndex = selectedIndex
 		m.agendaView.SetSize(width, height)

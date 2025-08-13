@@ -2,6 +2,7 @@ package tui
 
 import (
 	"fmt"
+	"bubblecal/internal/config"
 	"bubblecal/internal/storage"
 	"strings"
 	"time"
@@ -15,13 +16,15 @@ type MonthViewModel struct {
 	styles       *Styles
 	width        int
 	height       int
+	config       *config.Config
 }
 
 // NewMonthViewModel creates a new month view model
-func NewMonthViewModel(selectedDate *time.Time, styles *Styles) *MonthViewModel {
+func NewMonthViewModel(selectedDate *time.Time, styles *Styles, config *config.Config) *MonthViewModel {
 	return &MonthViewModel{
 		selectedDate: selectedDate,
 		styles:       styles,
+		config:       config,
 	}
 }
 
@@ -212,7 +215,13 @@ func (m *MonthViewModel) renderDayCellWithHeight(date time.Time, otherMonth bool
 				if len(title) > maxLen && maxLen > 3 {
 					title = title[:maxLen-1] + "…"
 				}
-				allDayEvents = append(allDayEvents, m.styles.EventBadge.Render(title))
+				// Get category color
+				categoryColor := "#808080"
+				if m.config != nil && evt.Category != "" {
+					categoryColor = m.config.GetCategoryColor(evt.Category)
+				}
+				eventStyle := lipgloss.NewStyle().Foreground(lipgloss.Color(categoryColor))
+				allDayEvents = append(allDayEvents, eventStyle.Render(title))
 			} else {
 				timedEventCount++
 			}
@@ -220,7 +229,16 @@ func (m *MonthViewModel) renderDayCellWithHeight(date time.Time, otherMonth bool
 		
 		// Add timed event count on same line as date if any
 		if timedEventCount > 0 {
-			dayDisplay += " " + m.styles.EventBadge.Render(fmt.Sprintf("●%d", timedEventCount))
+			// Use first timed event's category color for the indicator
+			indicatorColor := "#808080"
+			for _, evt := range events {
+				if !evt.IsAllDay() && m.config != nil && evt.Category != "" {
+					indicatorColor = m.config.GetCategoryColor(evt.Category)
+					break
+				}
+			}
+			indicatorStyle := lipgloss.NewStyle().Foreground(lipgloss.Color(indicatorColor))
+			dayDisplay += " " + indicatorStyle.Render(fmt.Sprintf("●%d", timedEventCount))
 		}
 		
 		// Add all-day events on separate lines below
@@ -310,7 +328,13 @@ func (m *MonthViewModel) renderDayCell(date time.Time, otherMonth bool, width in
 				if len(title) > maxLen && maxLen > 3 {
 					title = title[:maxLen-1] + "…"
 				}
-				allDayEvents = append(allDayEvents, m.styles.EventBadge.Render(title))
+				// Get category color
+				categoryColor := "#808080"
+				if m.config != nil && evt.Category != "" {
+					categoryColor = m.config.GetCategoryColor(evt.Category)
+				}
+				eventStyle := lipgloss.NewStyle().Foreground(lipgloss.Color(categoryColor))
+				allDayEvents = append(allDayEvents, eventStyle.Render(title))
 			} else {
 				timedEventCount++
 			}
@@ -318,7 +342,16 @@ func (m *MonthViewModel) renderDayCell(date time.Time, otherMonth bool, width in
 		
 		// Add timed event count on same line as date if any
 		if timedEventCount > 0 {
-			dayDisplay += " " + m.styles.EventBadge.Render(fmt.Sprintf("●%d", timedEventCount))
+			// Use first timed event's category color for the indicator
+			indicatorColor := "#808080"
+			for _, evt := range events {
+				if !evt.IsAllDay() && m.config != nil && evt.Category != "" {
+					indicatorColor = m.config.GetCategoryColor(evt.Category)
+					break
+				}
+			}
+			indicatorStyle := lipgloss.NewStyle().Foreground(lipgloss.Color(indicatorColor))
+			dayDisplay += " " + indicatorStyle.Render(fmt.Sprintf("●%d", timedEventCount))
 		}
 		
 		// Add all-day events on separate lines below
