@@ -144,23 +144,23 @@ func (a *App) bindKeys() {
 		case tcell.KeyDown:
 			a.uiState.SelectedDate = a.uiState.SelectedDate.AddDate(0, 0, 7)
         case tcell.KeyCtrlU:
-            // In week view: go back one week; otherwise, let other widgets handle it
+            // Week view: previous week; Month view: previous month
             if a.uiState.CurrentView == ViewWeek {
                 a.uiState.SelectedDate = a.uiState.SelectedDate.AddDate(0, 0, -7)
             } else {
-                return ev
+                a.uiState.SelectedDate = a.uiState.SelectedDate.AddDate(0, -1, 0)
             }
         case tcell.KeyCtrlD:
-            // In week view: go forward one week; otherwise, let other widgets handle it
+            // Week view: next week; Month view: next month
             if a.uiState.CurrentView == ViewWeek {
                 a.uiState.SelectedDate = a.uiState.SelectedDate.AddDate(0, 0, 7)
             } else {
-                return ev
+                a.uiState.SelectedDate = a.uiState.SelectedDate.AddDate(0, 1, 0)
             }
-		case tcell.KeyPgUp:
-			a.uiState.SelectedDate = a.uiState.SelectedDate.AddDate(0, -1, 0)
-		case tcell.KeyPgDn:
-			a.uiState.SelectedDate = a.uiState.SelectedDate.AddDate(0, 1, 0)
+        case tcell.KeyPgUp:
+            a.uiState.SelectedDate = a.uiState.SelectedDate.AddDate(0, -1, 0)
+        case tcell.KeyPgDn:
+            a.uiState.SelectedDate = a.uiState.SelectedDate.AddDate(0, 1, 0)
 		default:
 			return ev
 		}
