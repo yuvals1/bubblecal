@@ -180,9 +180,9 @@ func (w *WeekView) renderMiniCell(date time.Time, otherMonth bool, weekStart, we
     } else {
         style = style.Foreground(tcell.ColorWhite)
     }
-    // Today: use distinct background/text and bold (no red T in mini view)
+    // Today: apply background and bold, keep existing foreground color
     if sameDay(date, time.Now()) {
-        style = style.Background(colorTodayBackground).Foreground(colorTodayText)
+        style = style.Background(colorTodayBackground)
         label = fmt.Sprintf("[::b]%s[::-]", label)
     }
     cell := tview.NewTableCell(label).SetAlign(tview.AlignRight).SetStyle(style)
