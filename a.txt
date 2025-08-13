@@ -1,5 +1,0 @@
- pressing space in the text boxs of title and description in the event modal  doesn't work
- the colors of the events are not showing at the weekly view
-in agendas and list view, can we remove the dot at the start and make the event text itself have the color 
-can we add yanking functionality. that means when we press y we can then press p in antoher day and the event would paste to it
-remove the dot from the weekly and daily view
