@@ -29,7 +29,7 @@ func configPath() (string, error) {
 		return "", err
 	}
 	
-	configDir := filepath.Join(homeDir, ".simple-tui-cal")
+	configDir := filepath.Join(homeDir, ".bubblecal")
 	if err := os.MkdirAll(configDir, 0755); err != nil {
 		return "", err
 	}

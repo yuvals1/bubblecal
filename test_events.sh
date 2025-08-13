@@ -2,7 +2,7 @@
 
 # Create test events for today
 TODAY=$(date +%Y-%m-%d)
-CALENDAR_DIR="$HOME/.simple-tui-cal/days/$TODAY"
+CALENDAR_DIR="$HOME/.bubblecal/days/$TODAY"
 
 echo "Creating test events for $TODAY..."
 mkdir -p "$CALENDAR_DIR"
@@ -32,4 +32,4 @@ description:Office closed
 EOF
 
 echo "Test events created!"
-echo "Run ./simple-tui-cal-tea to test the calendar"
+echo "Run ./bubblecal to test the calendar"

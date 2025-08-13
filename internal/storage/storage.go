@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
-	"simple-tui-cal/internal/model"
+	"bubblecal/internal/model"
 	"sort"
 	"time"
 )
@@ -15,7 +15,7 @@ func GetCalendarDir() string {
 	if err != nil {
 		return ""
 	}
-	return filepath.Join(home, ".simple-tui-cal")
+	return filepath.Join(home, ".bubblecal")
 }
 
 // GetDaysDir returns the directory where day directories are stored

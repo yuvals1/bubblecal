@@ -2,7 +2,7 @@ package tui
 
 import (
 	"fmt"
-	"simple-tui-cal/internal/model"
+	"bubblecal/internal/model"
 	"strings"
 	"time"
 

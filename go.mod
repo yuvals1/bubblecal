@@ -1,4 +1,4 @@
-module simple-tui-cal
+module bubblecal
 
 go 1.24.5
 

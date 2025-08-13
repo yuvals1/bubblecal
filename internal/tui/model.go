@@ -1,9 +1,9 @@
 package tui
 
 import (
-	"simple-tui-cal/internal/config"
-	"simple-tui-cal/internal/model"
-	"simple-tui-cal/internal/storage"
+	"bubblecal/internal/config"
+	"bubblecal/internal/model"
+	"bubblecal/internal/storage"
 	"time"
 
 	tea "github.com/charmbracelet/bubbletea"
@@ -675,7 +675,7 @@ func (m *Model) View() string {
 }
 
 func (m *Model) renderHeader() string {
-	headerText := " " + m.selectedDate.Format("Jan 2006") + " · Simple TUI Cal · " + GetThemeName(m.currentTheme)
+	headerText := " " + m.selectedDate.Format("Jan 2006") + " · BubbleCal · " + GetThemeName(m.currentTheme)
 	return m.styles.Header.Width(m.width).Render(headerText)
 }
 
