@@ -128,6 +128,11 @@ func (d *DayViewModel) View() string {
 	}
 	
 	for h := startHour; h <= endHour && len(lines) < d.height-2; h++ {
+		// Add a divider line between hours (except for the first hour)
+		if h > startHour {
+			lines = append(lines, strings.Repeat("─", d.width-4))
+		}
+		
 		// Calculate row height based on number of events
 		rowHeight := 1
 		eventsText := ""

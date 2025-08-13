@@ -73,6 +73,10 @@ func (w *WeekViewModel) View() string {
 				Foreground(w.styles.TodayDate.GetForeground())
 		}
 		
+		// Add separator before cell (except first)
+		if d > 0 {
+			headerCells = append(headerCells, lipgloss.NewStyle().Foreground(lipgloss.Color("240")).Render("│"))
+		}
 		headerCells = append(headerCells, style.Render(label))
 	}
 	lines = append(lines, lipgloss.JoinHorizontal(lipgloss.Top, headerCells...))
@@ -123,6 +127,10 @@ func (w *WeekViewModel) View() string {
 			cellStyle = cellStyle.Foreground(w.styles.EventBadge.GetForeground())
 		}
 		
+		// Add separator before cell (except first)
+		if d > 0 {
+			allDayRow = append(allDayRow, lipgloss.NewStyle().Foreground(lipgloss.Color("240")).Render("│"))
+		}
 		allDayRow = append(allDayRow, cellStyle.Render(allDayEvents))
 	}
 	
@@ -183,10 +191,19 @@ func (w *WeekViewModel) View() string {
 					Bold(true)
 			}
 			
+			// Add separator before cell (except first)
+			if d > 0 {
+				rowCells = append(rowCells, lipgloss.NewStyle().Foreground(lipgloss.Color("240")).Render("│"))
+			}
 			rowCells = append(rowCells, cellStyle.Render(cellContent))
 		}
 		
-		lines = append(lines, lipgloss.JoinHorizontal(lipgloss.Top, rowCells...))
+		// Add horizontal line after each hour row (except last)
+		row := lipgloss.JoinHorizontal(lipgloss.Top, rowCells...)
+		lines = append(lines, row)
+		if h < endHour {
+			lines = append(lines, strings.Repeat("─", w.width-4))
+		}
 	}
 	
 	// Mini month at bottom (if enabled)
