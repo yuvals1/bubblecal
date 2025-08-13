@@ -5,6 +5,8 @@ import (
 	"bubblecal/internal/config"
 	"bubblecal/internal/model"
 	"bubblecal/internal/storage"
+	"os"
+	"path/filepath"
 	"strings"
 	"time"
 
@@ -727,8 +729,9 @@ func (m *HelpModal) View() string {
 	helpText = append(helpText, "")
 	
 	helpText = append(helpText, lipgloss.NewStyle().Bold(true).Render("General:"))
-	helpText = append(helpText, "  p         Toggle agenda position (right/bottom)")
+	helpText = append(helpText, "  P         Toggle agenda position (right/bottom)")
 	helpText = append(helpText, "  s         Cycle through themes")
+	helpText = append(helpText, "  S         Open Settings")
 	helpText = append(helpText, "  ?         Help")
 	helpText = append(helpText, "  q         Quit")
 	helpText = append(helpText, "")
@@ -777,4 +780,142 @@ func calculateEndTime(startTime string) string {
 		hour = 23 // Cap at 23:00
 	}
 	return fmt.Sprintf("%02d:%02d", hour, min)
+}
+
+// SettingsModal for displaying configuration settings
+type SettingsModal struct {
+	config  *config.Config
+	styles  *Styles
+	width   int
+	height  int
+	scrollOffset int
+}
+
+func NewSettingsModal(cfg *config.Config, styles *Styles) *SettingsModal {
+	return &SettingsModal{
+		config: cfg,
+		styles: styles,
+	}
+}
+
+func (m *SettingsModal) Init() tea.Cmd {
+	return nil
+}
+
+func (m *SettingsModal) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+	switch msg := msg.(type) {
+	case tea.WindowSizeMsg:
+		m.width = msg.Width
+		m.height = msg.Height
+		
+	case tea.KeyMsg:
+		switch msg.String() {
+		case "ctrl+c", "esc", "q", "S":
+			return m, func() tea.Msg { return ModalCloseMsg(true) }
+			
+		case "j", "down":
+			m.scrollOffset++
+			
+		case "k", "up":
+			if m.scrollOffset > 0 {
+				m.scrollOffset--
+			}
+		}
+	}
+	
+	return m, nil
+}
+
+func (m *SettingsModal) View() string {
+	if m.width == 0 || m.height == 0 {
+		return "Loading..."
+	}
+	
+	// Build settings content
+	header := lipgloss.NewStyle().
+		Bold(true).
+		Foreground(lipgloss.Color("39")).
+		Render("⚙️  Settings")
+	
+	var settings []string
+	
+	// Theme setting
+	themeName := "Default"
+	switch m.config.Theme {
+	case 1:
+		themeName = "Dark"
+	case 2:
+		themeName = "Light"
+	case 3:
+		themeName = "Neon"
+	case 4:
+		themeName = "Solarized"
+	case 5:
+		themeName = "Nord"
+	}
+	settings = append(settings, fmt.Sprintf("Theme: %s", themeName))
+	settings = append(settings, "")
+	
+	// Layout settings
+	settings = append(settings, fmt.Sprintf("Mini Month in Week View: %v", m.config.ShowMiniMonth))
+	settings = append(settings, fmt.Sprintf("Agenda Position: %s", func() string {
+		if m.config.AgendaBottom {
+			return "Bottom"
+		}
+		return "Right"
+	}()))
+	settings = append(settings, "")
+	
+	// Categories
+	settings = append(settings, lipgloss.NewStyle().Bold(true).Render("Categories:"))
+	for _, cat := range m.config.Categories {
+		catLine := lipgloss.NewStyle().
+			Foreground(lipgloss.Color(cat.Color)).
+			Render(fmt.Sprintf("  ● %s", cat.Name))
+		settings = append(settings, catLine)
+	}
+	settings = append(settings, "")
+	
+	// Keybinds info
+	settings = append(settings, lipgloss.NewStyle().Bold(true).Render("Quick Settings:"))
+	settings = append(settings, "  s - Cycle themes")
+	settings = append(settings, "  P - Toggle agenda position")
+	settings = append(settings, "  m - Toggle mini month (week view)")
+	settings = append(settings, "")
+	
+	// Config file location
+	homeDir, _ := os.UserHomeDir()
+	configPath := filepath.Join(homeDir, ".bubblecal", "config.json")
+	settings = append(settings, lipgloss.NewStyle().
+		Foreground(lipgloss.Color("240")).
+		Render(fmt.Sprintf("Config: %s", configPath)))
+	
+	content := lipgloss.JoinVertical(lipgloss.Left, settings...)
+	
+	// Instructions
+	instructions := lipgloss.NewStyle().
+		Foreground(lipgloss.Color("240")).
+		Render("Press Esc or S to close")
+	
+	fullContent := lipgloss.JoinVertical(lipgloss.Left,
+		header,
+		"",
+		content,
+		"",
+		instructions,
+	)
+	
+	modalStyle := lipgloss.NewStyle().
+		Border(lipgloss.RoundedBorder()).
+		BorderForeground(lipgloss.Color("39")).
+		Padding(1, 3).
+		Width(70).
+		MaxHeight(m.height - 10).
+		Background(lipgloss.Color("0"))
+	
+	modal := modalStyle.Render(fullContent)
+	
+	return lipgloss.Place(m.width, m.height,
+		lipgloss.Center, lipgloss.Center,
+		modal)
 }

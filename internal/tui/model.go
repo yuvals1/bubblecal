@@ -462,6 +462,14 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.config.Theme = int(m.currentTheme)
 			m.config.Save()
 			
+		case "S":
+			// Open Settings modal
+			modal := NewSettingsModal(m.config, m.styles)
+			modal.width = m.width
+			modal.height = m.height
+			m.modalStack = append(m.modalStack, modal)
+			return m, modal.Init()
+			
 		case "G":
 			// Go to bottom
 			if m.focusedPane == CalendarPane {
@@ -913,7 +921,7 @@ func (m *Model) View() string {
 }
 
 func (m *Model) renderHeader() string {
-	headerText := " " + m.selectedDate.Format("Jan 2006") + " · BubbleCal · " + GetThemeName(m.currentTheme)
+	headerText := " " + m.selectedDate.Format("Jan 2006") + " · BubbleCal"
 	
 	if m.jumpMode {
 		jumpStatus := lipgloss.NewStyle().
