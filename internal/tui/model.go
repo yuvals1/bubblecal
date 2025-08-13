@@ -212,9 +212,9 @@ func NewModel() *Model {
 	
 	// Initialize views
 	m.monthView = NewMonthViewModel(&m.selectedDate, m.styles, cfg)
-	m.weekView = NewWeekViewModel(&m.selectedDate, &m.selectedHour, m.styles)
+	m.weekView = NewWeekViewModel(&m.selectedDate, &m.selectedHour, m.styles, cfg)
 	m.weekView.SetShowMiniMonth(m.showMiniMonth)
-	m.dayView = NewDayViewModel(&m.selectedDate, &m.selectedHour, m.styles)
+	m.dayView = NewDayViewModel(&m.selectedDate, &m.selectedHour, m.styles, cfg)
 	m.listView = NewListViewModel(&m.selectedDate, m.styles, cfg)
 	m.agendaView = NewAgendaViewModel(&m.selectedDate, m.styles, cfg)
 	
@@ -615,13 +615,13 @@ func (m *Model) updateViewStyles() {
 	if m.weekView != nil {
 		width, height := m.weekView.width, m.weekView.height
 		showMiniMonth := m.weekView.showMiniMonth
-		m.weekView = NewWeekViewModel(&m.selectedDate, &m.selectedHour, m.styles)
+		m.weekView = NewWeekViewModel(&m.selectedDate, &m.selectedHour, m.styles, m.config)
 		m.weekView.SetShowMiniMonth(showMiniMonth)
 		m.weekView.SetSize(width, height)
 	}
 	if m.dayView != nil {
 		width, height := m.dayView.width, m.dayView.height
-		m.dayView = NewDayViewModel(&m.selectedDate, &m.selectedHour, m.styles)
+		m.dayView = NewDayViewModel(&m.selectedDate, &m.selectedHour, m.styles, m.config)
 		m.dayView.SetSize(width, height)
 	}
 	if m.listView != nil {

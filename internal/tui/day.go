@@ -2,6 +2,7 @@ package tui
 
 import (
 	"fmt"
+	"bubblecal/internal/config"
 	"bubblecal/internal/storage"
 	"strings"
 	"time"
@@ -16,14 +17,16 @@ type DayViewModel struct {
 	styles       *Styles
 	width        int
 	height       int
+	config       *config.Config
 }
 
 // NewDayViewModel creates a new day view model
-func NewDayViewModel(selectedDate *time.Time, selectedHour *int, styles *Styles) *DayViewModel {
+func NewDayViewModel(selectedDate *time.Time, selectedHour *int, styles *Styles, config *config.Config) *DayViewModel {
 	return &DayViewModel{
 		selectedDate: selectedDate,
 		selectedHour: selectedHour,
 		styles:       styles,
+		config:       config,
 	}
 }
 
@@ -54,26 +57,58 @@ func (d *DayViewModel) View() string {
 	// Load events
 	events, _ := storage.LoadDayEvents(date)
 	
-	// Create hour map
-	hourEvents := make(map[int][]string)
+	// Create hour map - store events with color information
+	type coloredEvent struct {
+		text  string
+		color lipgloss.Color
+	}
+	hourEvents := make(map[int][]coloredEvent)
 	var allDayEvents []string
 	
 	for _, evt := range events {
 		if evt.IsAllDay() {
-			allDayEvents = append(allDayEvents, evt.Title)
+			// Get category color for all-day events
+			categoryColor := lipgloss.Color("15") // Default white
+			if d.config != nil && evt.Category != "" {
+				categoryColor = lipgloss.Color(d.config.GetCategoryColor(evt.Category))
+			}
+			coloredTitle := lipgloss.NewStyle().
+				Foreground(categoryColor).
+				Render(evt.Title)
+			allDayEvents = append(allDayEvents, coloredTitle)
 		} else {
 			var hour int
 			if _, err := fmt.Sscanf(evt.StartTime, "%d:", &hour); err == nil {
-				eventText := evt.Title
+				// Get category color
+				categoryColor := lipgloss.Color("15") // Default white
+				if d.config != nil && evt.Category != "" {
+					categoryColor = lipgloss.Color(d.config.GetCategoryColor(evt.Category))
+				}
+				
+				// Build time part in gray
+				timeStr := ""
 				if evt.EndTime != "" {
-					eventText = fmt.Sprintf("%s-%s %s", evt.StartTime, evt.EndTime, evt.Title)
+					timeStr = fmt.Sprintf("%s-%s", evt.StartTime, evt.EndTime)
 				} else {
-					eventText = fmt.Sprintf("%s %s", evt.StartTime, evt.Title)
+					timeStr = evt.StartTime
 				}
+				
+				// Build the event display with colored title
+				timeStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("245"))
+				titleStyle := lipgloss.NewStyle().Foreground(categoryColor)
+				
+				eventText := fmt.Sprintf("%s %s", timeStyle.Render(timeStr), titleStyle.Render(evt.Title))
 				if evt.Category != "" {
-					eventText += fmt.Sprintf(" [%s]", evt.Category)
+					categoryLabel := lipgloss.NewStyle().
+						Foreground(lipgloss.Color("240")).
+						Render(fmt.Sprintf(" [%s]", evt.Category))
+					eventText += categoryLabel
 				}
-				hourEvents[hour] = append(hourEvents[hour], eventText)
+				
+				hourEvents[hour] = append(hourEvents[hour], coloredEvent{
+					text:  eventText,
+					color: categoryColor,
+				})
 			}
 		}
 	}
@@ -133,9 +168,13 @@ func (d *DayViewModel) View() string {
 		// Calculate row height based on number of events
 		rowHeight := 1
 		eventsText := ""
-		if events, ok := hourEvents[h]; ok {
+		if events, ok := hourEvents[h]; ok && len(events) > 0 {
 			// Display each event on its own line
-			eventsText = strings.Join(events, "\n")
+			var eventLines []string
+			for _, evt := range events {
+				eventLines = append(eventLines, evt.text)
+			}
+			eventsText = strings.Join(eventLines, "\n")
 			rowHeight = len(events)
 			if rowHeight < 1 {
 				rowHeight = 1

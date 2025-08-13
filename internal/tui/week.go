@@ -2,6 +2,7 @@ package tui
 
 import (
 	"fmt"
+	"bubblecal/internal/config"
 	"bubblecal/internal/storage"
 	"strings"
 	"time"
@@ -17,15 +18,17 @@ type WeekViewModel struct {
 	width        int
 	height       int
 	showMiniMonth bool
+	config       *config.Config
 }
 
 // NewWeekViewModel creates a new week view model
-func NewWeekViewModel(selectedDate *time.Time, selectedHour *int, styles *Styles) *WeekViewModel {
+func NewWeekViewModel(selectedDate *time.Time, selectedHour *int, styles *Styles, config *config.Config) *WeekViewModel {
 	return &WeekViewModel{
 		selectedDate: selectedDate,
 		selectedHour: selectedHour,
 		styles:       styles,
 		showMiniMonth: true, // Show by default
+		config:       config,
 	}
 }
 
@@ -273,11 +276,23 @@ func (w *WeekViewModel) getHourEvents(date time.Time, hour int) string {
 			title := evt.Title
 			// Calculate max length based on column width
 			colWidth := (w.width - 10) / 7
-			maxLen := colWidth - 4 // Account for padding and bullet
+			maxLen := colWidth - 2 // Account for padding
 			if len(title) > maxLen && maxLen > 3 {
 				title = title[:maxLen-1] + "…"
 			}
-			hourEvents = append(hourEvents, w.styles.EventBadge.Render("●")+" "+title)
+			
+			// Get category color
+			categoryColor := lipgloss.Color("15") // Default white
+			if w.config != nil && evt.Category != "" {
+				categoryColor = lipgloss.Color(w.config.GetCategoryColor(evt.Category))
+			}
+			
+			// Apply color to the title
+			coloredTitle := lipgloss.NewStyle().
+				Foreground(categoryColor).
+				Render(title)
+			
+			hourEvents = append(hourEvents, coloredTitle)
 		}
 	}
 	
