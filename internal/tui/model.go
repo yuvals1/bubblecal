@@ -965,17 +965,17 @@ func (m *Model) renderHeader() string {
 		}
 		
 		if isActive {
-			// Highlight active view
+			// Highlight active view with better contrast
 			viewIndicator += lipgloss.NewStyle().
-				Background(lipgloss.Color("39")).
-				Foreground(lipgloss.Color("15")).
+				Background(lipgloss.Color("220")).  // Bright yellow/gold background
+				Foreground(lipgloss.Color("0")).    // Black text
 				Bold(true).
 				Padding(0, 1).
 				Render(v)
 		} else {
-			// Inactive view
+			// Inactive view with better visibility
 			viewIndicator += lipgloss.NewStyle().
-				Foreground(lipgloss.Color("240")).
+				Foreground(lipgloss.Color("250")).  // Light gray (more visible)
 				Padding(0, 1).
 				Render(v)
 		}
