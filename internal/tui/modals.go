@@ -117,7 +117,7 @@ func (m *EventModal) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			
 		case "tab", "down":
 			m.focusIndex++
-			if m.focusIndex > len(m.inputs) {
+			if m.focusIndex >= len(m.inputs) {
 				m.focusIndex = 0
 			}
 			m.updateFocus()
@@ -125,7 +125,7 @@ func (m *EventModal) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case "shift+tab", "up":
 			m.focusIndex--
 			if m.focusIndex < 0 {
-				m.focusIndex = len(m.inputs)
+				m.focusIndex = len(m.inputs) - 1
 			}
 			m.updateFocus()
 			
@@ -141,13 +141,11 @@ func (m *EventModal) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 			
 		case "enter":
-			if m.focusIndex == len(m.inputs) {
-				// Save button
-				if err := m.saveEvent(); err == nil {
-					return m, func() tea.Msg { return ModalCloseMsg(true) }
-				} else {
-					m.errorMsg = err.Error()
-				}
+			// Save the event from any field
+			if err := m.saveEvent(); err == nil {
+				return m, func() tea.Msg { return ModalCloseMsg(true) }
+			} else {
+				m.errorMsg = err.Error()
 			}
 			
 		default:
@@ -266,16 +264,9 @@ func (m *EventModal) View() string {
 		fields = append(fields, "")
 	}
 	
-	// Buttons
+	// Buttons - Enter saves from any field
 	saveBtn := "[ Save (Enter) ]"
 	cancelBtn := "[ Cancel (Esc) ]"
-	if m.focusIndex == len(m.inputs) {
-		saveBtn = lipgloss.NewStyle().
-			Background(lipgloss.Color("33")).
-			Foreground(lipgloss.Color("15")).
-			Bold(true).
-			Render(saveBtn)
-	}
 	
 	buttons := lipgloss.JoinHorizontal(lipgloss.Top, saveBtn, "  ", cancelBtn)
 	fields = append(fields, buttons)
