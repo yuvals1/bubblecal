@@ -192,7 +192,7 @@ func (w *WeekViewModel) View() string {
 	// Mini month at bottom (if enabled)
 	if w.showMiniMonth {
 		lines = append(lines, "")
-		lines = append(lines, w.renderMiniMonth())
+		lines = append(lines, w.renderMiniMonth(weekStart))
 	}
 	
 	return lipgloss.JoinVertical(lipgloss.Left, lines...)
@@ -259,8 +259,10 @@ func (w *WeekViewModel) getHourEvents(date time.Time, hour int) string {
 	return ""
 }
 
-func (w *WeekViewModel) renderMiniMonth() string {
+func (w *WeekViewModel) renderMiniMonth(weekStart time.Time) string {
 	sel := *w.selectedDate
+	
+	// Always show the month that contains the selected date
 	firstOfMonth := time.Date(sel.Year(), sel.Month(), 1, 0, 0, 0, 0, sel.Location())
 	startWeekday := int(firstOfMonth.Weekday())
 	
@@ -268,9 +270,11 @@ func (w *WeekViewModel) renderMiniMonth() string {
 	firstOfNext := firstOfMonth.AddDate(0, 1, 0)
 	daysInMonth := int(firstOfNext.Sub(firstOfMonth).Hours()/24 + 0.5)
 	
-	// Week bounds
-	weekStart := sel.AddDate(0, 0, -int(sel.Weekday()))
+	// Use the weekStart passed from the main view to ensure consistency
 	weekEnd := weekStart.AddDate(0, 0, 6)
+	
+	// DEBUG: Let's see what week we're trying to highlight
+	// fmt.Fprintf(os.Stderr, "Week: %s to %s\n", weekStart.Format("Jan 2"), weekEnd.Format("Jan 2"))
 	
 	var lines []string
 	
@@ -289,20 +293,41 @@ func (w *WeekViewModel) renderMiniMonth() string {
 	
 	// Days of month
 	for day := 1; day <= daysInMonth; day++ {
-		date := time.Date(sel.Year(), sel.Month(), day, 0, 0, 0, 0, sel.Location())
+		// Create the actual date for this day
+		date := time.Date(firstOfMonth.Year(), firstOfMonth.Month(), day, 0, 0, 0, 0, sel.Location())
 		
 		style := lipgloss.NewStyle()
 		
-		// Highlight current week
-		if !date.Before(weekStart) && !date.After(weekEnd) {
-			style = style.Foreground(lipgloss.Color("196"))
-		}
+		// Check if this day is in the currently displayed week
+		// Compare just the dates, not the times
+		y1, m1, d1 := date.Date()
+		y2, m2, d2 := weekStart.Date()
+		y3, m3, d3 := weekEnd.Date()
 		
-		// Highlight today
+		dateOnly := time.Date(y1, m1, d1, 0, 0, 0, 0, time.UTC)
+		weekStartOnly := time.Date(y2, m2, d2, 0, 0, 0, 0, time.UTC)
+		weekEndOnly := time.Date(y3, m3, d3, 0, 0, 0, 0, time.UTC)
+		
+		inCurrentWeek := !dateOnly.Before(weekStartOnly) && !dateOnly.After(weekEndOnly)
+		
+		// Highlight today with special background (but preserve week color if in week)
 		if sameDay(date, time.Now()) {
-			style = style.
-				Background(w.styles.TodayDate.GetBackground()).
-				Bold(true)
+			if inCurrentWeek {
+				// Today AND in current week - use red foreground with today background
+				style = style.
+					Background(w.styles.TodayDate.GetBackground()).
+					Foreground(lipgloss.Color("196")).
+					Bold(true)
+			} else {
+				// Today but NOT in current week - use normal today styling
+				style = style.
+					Background(w.styles.TodayDate.GetBackground()).
+					Foreground(w.styles.TodayDate.GetForeground()).
+					Bold(true)
+			}
+		} else if inCurrentWeek {
+			// Not today but in current week - use red foreground
+			style = style.Foreground(lipgloss.Color("196"))
 		}
 		
 		currentLine += style.Render(fmt.Sprintf("%3d", day))
