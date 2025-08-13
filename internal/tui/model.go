@@ -1,6 +1,7 @@
 package tui
 
 import (
+	"simple-tui-cal/internal/config"
 	"simple-tui-cal/internal/model"
 	"simple-tui-cal/internal/storage"
 	"time"
@@ -51,6 +52,9 @@ type Model struct {
 	// Modal state
 	modalStack   []tea.Model
 	
+	// Config
+	config       *config.Config
+	
 	// Styling
 	styles       *Styles
 }
@@ -81,12 +85,17 @@ func DefaultStyles() *Styles {
 // NewModel creates a new application model
 func NewModel() *Model {
 	now := time.Now()
+	
+	// Load configuration
+	cfg, _ := config.Load()
+	
 	m := &Model{
 		selectedDate: now,
 		currentView:  MonthView,
 		focusedPane:  CalendarPane,
 		selectedHour: 12, // Default to noon
-		showMiniMonth: true, // Show mini-month by default
+		showMiniMonth: cfg.ShowMiniMonth,
+		config:       cfg,
 		styles:       DefaultStyles(),
 	}
 	
@@ -241,6 +250,9 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.showMiniMonth = !m.showMiniMonth
 				// Update week view with the new setting
 				m.weekView.SetShowMiniMonth(m.showMiniMonth)
+				// Save the preference
+				m.config.ShowMiniMonth = m.showMiniMonth
+				m.config.Save()
 			}
 			
 		case "?":
