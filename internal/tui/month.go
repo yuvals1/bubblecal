@@ -71,34 +71,55 @@ func (m *MonthViewModel) View() string {
 	
 	// Build calendar grid
 	var currentWeek []string
+	var currentWeekDates []time.Time
 	
 	// Fill leading days from previous month
 	for i := 0; i < startWeekday; i++ {
 		day := prevLast.Day() - (startWeekday - 1 - i)
 		date := time.Date(prevLast.Year(), prevLast.Month(), day, 0, 0, 0, 0, now.Location())
-		currentWeek = append(currentWeek, m.renderDayCell(date, true, cellWidth))
+		currentWeekDates = append(currentWeekDates, date)
 	}
 	
 	// Fill current month
 	for day := 1; day <= daysInMonth; day++ {
 		date := time.Date(now.Year(), now.Month(), day, 0, 0, 0, 0, now.Location())
-		currentWeek = append(currentWeek, m.renderDayCell(date, false, cellWidth))
+		currentWeekDates = append(currentWeekDates, date)
 		
 		// End of week
-		if len(currentWeek) == 7 {
+		if len(currentWeekDates) == 7 {
+			// Calculate max height for this week
+			maxHeight := m.getMaxHeightForWeek(currentWeekDates)
+			
+			// Render all cells with consistent height
+			for _, d := range currentWeekDates {
+				isOtherMonth := d.Month() != now.Month()
+				currentWeek = append(currentWeek, m.renderDayCellWithHeight(d, isOtherMonth, cellWidth, maxHeight))
+			}
+			
 			lines = append(lines, lipgloss.JoinHorizontal(lipgloss.Top, currentWeek...))
 			currentWeek = []string{}
+			currentWeekDates = []time.Time{}
 		}
 	}
 	
 	// Fill trailing days from next month
-	if len(currentWeek) > 0 {
+	if len(currentWeekDates) > 0 {
 		nextDay := 1
-		for len(currentWeek) < 7 {
+		for len(currentWeekDates) < 7 {
 			date := firstOfNext.AddDate(0, 0, nextDay-1)
-			currentWeek = append(currentWeek, m.renderDayCell(date, true, cellWidth))
+			currentWeekDates = append(currentWeekDates, date)
 			nextDay++
 		}
+		
+		// Calculate max height for this week
+		maxHeight := m.getMaxHeightForWeek(currentWeekDates)
+		
+		// Render all cells with consistent height
+		for _, d := range currentWeekDates {
+			isOtherMonth := d.Month() != now.Month()
+			currentWeek = append(currentWeek, m.renderDayCellWithHeight(d, isOtherMonth, cellWidth, maxHeight))
+		}
+		
 		lines = append(lines, lipgloss.JoinHorizontal(lipgloss.Top, currentWeek...))
 	}
 	
@@ -114,13 +135,46 @@ func (m *MonthViewModel) View() string {
 	return lipgloss.JoinVertical(lipgloss.Left, lines...)
 }
 
-func (m *MonthViewModel) renderDayCell(date time.Time, otherMonth bool, width int) string {
+func (m *MonthViewModel) getMaxHeightForWeek(dates []time.Time) int {
+	maxHeight := 2 // Minimum height
+	
+	for _, date := range dates {
+		events, _ := storage.LoadDayEvents(date)
+		allDayCount := 0
+		hasTimedEvents := false
+		
+		for _, evt := range events {
+			if evt.IsAllDay() {
+				allDayCount++
+			} else {
+				hasTimedEvents = true
+			}
+		}
+		
+		// Calculate needed height for this cell
+		cellHeight := 2
+		if allDayCount > 0 {
+			cellHeight = 1 + allDayCount
+			if hasTimedEvents {
+				cellHeight++
+			}
+		}
+		
+		if cellHeight > maxHeight {
+			maxHeight = cellHeight
+		}
+	}
+	
+	return maxHeight
+}
+
+func (m *MonthViewModel) renderDayCellWithHeight(date time.Time, otherMonth bool, width int, height int) string {
 	dayNum := fmt.Sprintf("%2d", date.Day())
 	
-	// Base style
+	// Base style with specified height
 	style := lipgloss.NewStyle().
 		Width(width).
-		Height(2).
+		Height(height).
 		Padding(0, 1)
 	
 	today := time.Now()
@@ -147,25 +201,137 @@ func (m *MonthViewModel) renderDayCell(date time.Time, otherMonth bool, width in
 			Foreground(m.styles.TodayDate.GetForeground())
 	}
 	
-	// Load events for badge
+	// Load events
 	events, _ := storage.LoadDayEvents(date)
 	eventInfo := ""
 	if len(events) > 0 {
-		// Check for all-day events first
+		// Collect all all-day events
+		var allDayEvents []string
+		timedEventCount := 0
+		
 		for _, evt := range events {
 			if evt.IsAllDay() {
 				title := evt.Title
 				maxLen := width - 6
-				if len(title) > maxLen {
+				if len(title) > maxLen && maxLen > 3 {
 					title = title[:maxLen-1] + "…"
 				}
-				eventInfo = "\n" + m.styles.EventBadge.Render(title)
-				break
+				allDayEvents = append(allDayEvents, m.styles.EventBadge.Render(title))
+			} else {
+				timedEventCount++
 			}
 		}
-		// If no all-day event, show count
-		if eventInfo == "" {
-			eventInfo = " " + m.styles.EventBadge.Render(fmt.Sprintf("●%d", len(events)))
+		
+		// Build event info
+		if len(allDayEvents) > 0 {
+			// Show all-day events on separate lines
+			eventInfo = "\n" + strings.Join(allDayEvents, "\n")
+			// Add timed event count if any
+			if timedEventCount > 0 {
+				eventInfo += "\n" + m.styles.EventBadge.Render(fmt.Sprintf("●%d", timedEventCount))
+			}
+		} else if timedEventCount > 0 {
+			// Only timed events
+			eventInfo = " " + m.styles.EventBadge.Render(fmt.Sprintf("●%d", timedEventCount))
+		}
+	}
+	
+	// Compose the cell content
+	return style.Render(dayNum + eventInfo)
+}
+
+// Keep the old renderDayCell for compatibility (not used anymore)
+func (m *MonthViewModel) renderDayCell(date time.Time, otherMonth bool, width int) string {
+	dayNum := fmt.Sprintf("%2d", date.Day())
+	
+	// Load events once
+	events, _ := storage.LoadDayEvents(date)
+	
+	// Calculate cell height based on events
+	cellHeight := 2 // Minimum height
+	allDayCount := 0
+	hasTimedEvents := false
+	
+	for _, evt := range events {
+		if evt.IsAllDay() {
+			allDayCount++
+		} else {
+			hasTimedEvents = true
+		}
+	}
+	
+	// Calculate needed height: 1 for day number + 1 per all-day event + 1 for timed events indicator
+	if allDayCount > 0 {
+		cellHeight = 1 + allDayCount
+		if hasTimedEvents {
+			cellHeight++
+		}
+	}
+	if cellHeight < 2 {
+		cellHeight = 2
+	}
+	
+	// Base style
+	style := lipgloss.NewStyle().
+		Width(width).
+		Height(cellHeight).
+		Padding(0, 1)
+	
+	today := time.Now()
+	
+	// Apply styling based on date properties
+	if otherMonth {
+		style = style.Foreground(m.styles.OtherMonth.GetForeground())
+	} else if date.Weekday() == time.Saturday || date.Weekday() == time.Sunday {
+		style = style.Foreground(m.styles.Weekend.GetForeground())
+	}
+	
+	// Selected date
+	if sameDay(date, *m.selectedDate) {
+		style = style.
+			Background(m.styles.SelectedDate.GetBackground()).
+			Foreground(m.styles.SelectedDate.GetForeground()).
+			Bold(true)
+	}
+	
+	// Today background (only if not selected)
+	if sameDay(date, today) && !sameDay(date, *m.selectedDate) {
+		style = style.
+			Background(m.styles.TodayDate.GetBackground()).
+			Foreground(m.styles.TodayDate.GetForeground())
+	}
+	
+	// Build events display
+	eventInfo := ""
+	if len(events) > 0 {
+		// Collect all all-day events
+		var allDayEvents []string
+		timedEventCount := 0
+		
+		for _, evt := range events {
+			if evt.IsAllDay() {
+				title := evt.Title
+				maxLen := width - 6
+				if len(title) > maxLen && maxLen > 3 {
+					title = title[:maxLen-1] + "…"
+				}
+				allDayEvents = append(allDayEvents, m.styles.EventBadge.Render(title))
+			} else {
+				timedEventCount++
+			}
+		}
+		
+		// Build event info
+		if len(allDayEvents) > 0 {
+			// Show all-day events on separate lines
+			eventInfo = "\n" + strings.Join(allDayEvents, "\n")
+			// Add timed event count if any
+			if timedEventCount > 0 {
+				eventInfo += "\n" + m.styles.EventBadge.Render(fmt.Sprintf("●%d", timedEventCount))
+			}
+		} else if timedEventCount > 0 {
+			// Only timed events
+			eventInfo = " " + m.styles.EventBadge.Render(fmt.Sprintf("●%d", timedEventCount))
 		}
 	}
 	
