@@ -17,6 +17,10 @@ type MonthViewModel struct {
 	width        int
 	height       int
 	config       *config.Config
+	// Jump mode state
+	jumpMode     bool
+	jumpKeys     []string
+	jumpTargets  []time.Time
 }
 
 // NewMonthViewModel creates a new month view model
@@ -31,6 +35,12 @@ func NewMonthViewModel(selectedDate *time.Time, styles *Styles, config *config.C
 func (m *MonthViewModel) SetSize(width, height int) {
 	m.width = width
 	m.height = height
+}
+
+func (m *MonthViewModel) SetJumpMode(jumpMode bool, jumpKeys []string, jumpTargets []time.Time) {
+	m.jumpMode = jumpMode
+	m.jumpKeys = jumpKeys
+	m.jumpTargets = jumpTargets
 }
 
 func (m *MonthViewModel) View() string {
@@ -244,6 +254,23 @@ func (m *MonthViewModel) renderDayCellWithHeight(date time.Time, otherMonth bool
 		// Add all-day events on separate lines below
 		if len(allDayEvents) > 0 {
 			eventInfo = "\n" + strings.Join(allDayEvents, "\n")
+		}
+	}
+	
+	// Add jump key overlay if in jump mode
+	if m.jumpMode {
+		for i, target := range m.jumpTargets {
+			if sameDay(date, target) && i < len(m.jumpKeys) {
+				jumpKey := m.jumpKeys[i]
+				jumpStyle := lipgloss.NewStyle().
+					Background(lipgloss.Color("196")).
+					Foreground(lipgloss.Color("15")).
+					Bold(true).
+					Padding(0, 1)
+				jumpOverlay := jumpStyle.Render(jumpKey)
+				dayDisplay = jumpOverlay + " " + dayDisplay
+				break
+			}
 		}
 	}
 	

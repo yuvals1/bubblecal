@@ -54,6 +54,11 @@ type Model struct {
 	// Modal state
 	modalStack   []tea.Model
 	
+	// Jump mode state
+	jumpMode     bool
+	jumpKeys     []string
+	jumpTargets  []time.Time
+	
 	// Config
 	config       *config.Config
 	
@@ -73,6 +78,13 @@ const (
 	ThemeNord
 	ThemeCount // Keep this last to track number of themes
 )
+
+// Jump key sequences (similar to EasyMotion)
+var JUMP_KEYS = []string{
+	"a", "s", "d", "f", "g", "h", "j", "k", "l",
+	"q", "w", "e", "r", "t", "y", "u", "i", "o", "p",
+	"z", "x", "c", "v", "b", "n", "m",
+}
 
 // Styles holds all the lipgloss styles
 type Styles struct {
@@ -252,6 +264,11 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.agendaView.SetEvents(m.events)
 		
 	case tea.KeyMsg:
+		// Handle jump mode first
+		if m.jumpMode {
+			return m.handleJumpMode(msg.String()), nil
+		}
+		
 		switch msg.String() {
 		case "ctrl+c", "q":
 			return m, tea.Quit
@@ -317,6 +334,12 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 			m.loadEvents()
 			cmds = append(cmds, loadEventsCmd(m.selectedDate))
+			
+		case "f":
+			// Enter jump mode (only for calendar pane)
+			if m.focusedPane == CalendarPane {
+				m.initJumpMode()
+			}
 			
 		case "a":
 			// Add new event
@@ -587,6 +610,12 @@ func (m *Model) View() string {
 	// Render header
 	header := m.renderHeader()
 	
+	// Update jump mode state in views
+	if m.monthView != nil {
+		m.monthView.SetJumpMode(m.jumpMode, m.jumpKeys, m.jumpTargets)
+	}
+	// TODO: Add jump mode to week and day views
+	
 	// Render main content
 	var calendarView string
 	viewTitle := ""
@@ -676,6 +705,17 @@ func (m *Model) View() string {
 
 func (m *Model) renderHeader() string {
 	headerText := " " + m.selectedDate.Format("Jan 2006") + " · BubbleCal · " + GetThemeName(m.currentTheme)
+	
+	if m.jumpMode {
+		jumpStatus := lipgloss.NewStyle().
+			Background(lipgloss.Color("196")).
+			Foreground(lipgloss.Color("15")).
+			Bold(true).
+			Padding(0, 1).
+			Render("JUMP MODE")
+		headerText += " · " + jumpStatus
+	}
+	
 	return m.styles.Header.Width(m.width).Render(headerText)
 }
 
@@ -702,4 +742,91 @@ func loadEventsCmd(date time.Time) tea.Cmd {
 		events, _ := storage.LoadDayEvents(date)
 		return EventsLoadedMsg{Events: events}
 	}
+}
+
+// Jump mode functions
+
+func (m *Model) initJumpMode() {
+	m.jumpMode = true
+	m.jumpKeys = []string{}
+	m.jumpTargets = []time.Time{}
+	
+	// Generate jump targets based on current view
+	switch m.currentView {
+	case MonthView:
+		m.generateMonthJumpTargets()
+	case WeekView:
+		m.generateWeekJumpTargets()
+	case DayView:
+		m.generateDayJumpTargets()
+	}
+}
+
+func (m *Model) handleJumpMode(key string) *Model {
+	// Exit jump mode on escape
+	if key == "esc" || key == "ctrl+c" {
+		m.jumpMode = false
+		m.jumpKeys = nil
+		m.jumpTargets = nil
+		return m
+	}
+	
+	// Check if key matches any jump target
+	for i, jumpKey := range m.jumpKeys {
+		if jumpKey == key {
+			// Jump to the target date
+			if i < len(m.jumpTargets) {
+				m.selectedDate = m.jumpTargets[i]
+				m.loadEvents()
+			}
+			// Exit jump mode
+			m.jumpMode = false
+			m.jumpKeys = nil
+			m.jumpTargets = nil
+			return m
+		}
+	}
+	
+	return m
+}
+
+func (m *Model) generateMonthJumpTargets() {
+	now := m.selectedDate
+	firstOfMonth := time.Date(now.Year(), now.Month(), 1, 0, 0, 0, 0, now.Location())
+	firstOfNext := firstOfMonth.AddDate(0, 1, 0)
+	daysInMonth := int(firstOfNext.Sub(firstOfMonth).Hours()/24 + 0.5)
+	
+	// Generate targets for all visible days in the month view
+	keyIndex := 0
+	
+	// Add days from current month
+	for day := 1; day <= daysInMonth && keyIndex < len(JUMP_KEYS); day++ {
+		date := time.Date(now.Year(), now.Month(), day, 0, 0, 0, 0, now.Location())
+		m.jumpTargets = append(m.jumpTargets, date)
+		m.jumpKeys = append(m.jumpKeys, JUMP_KEYS[keyIndex])
+		keyIndex++
+	}
+}
+
+func (m *Model) generateWeekJumpTargets() {
+	// Generate targets for 7 days of the week
+	startOfWeek := m.getStartOfWeek(m.selectedDate)
+	
+	for i := 0; i < 7 && i < len(JUMP_KEYS); i++ {
+		date := startOfWeek.AddDate(0, 0, i)
+		m.jumpTargets = append(m.jumpTargets, date)
+		m.jumpKeys = append(m.jumpKeys, JUMP_KEYS[i])
+	}
+}
+
+func (m *Model) generateDayJumpTargets() {
+	// For day view, just target the current day (not much to jump to)
+	m.jumpTargets = append(m.jumpTargets, m.selectedDate)
+	m.jumpKeys = append(m.jumpKeys, JUMP_KEYS[0])
+}
+
+func (m *Model) getStartOfWeek(date time.Time) time.Time {
+	// Get start of week (Sunday)
+	weekday := int(date.Weekday())
+	return date.AddDate(0, 0, -weekday)
 }
