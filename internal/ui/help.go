@@ -8,8 +8,7 @@ import (
 func ShowHelpModal(app *tview.Application, pages *tview.Pages) {
     helpText := ""
     helpText += "[::b]Views[::-]\n"
-    helpText += "  m: Month view\n"
-    helpText += "  w: Week view\n"
+    helpText += "  Space: Cycle views (Month→Week→Day)\n"
     helpText += "\n"
     helpText += "[::b]Navigation[::-]\n"
     helpText += "  h/l or ←/→: Move by day\n"

@@ -17,6 +17,7 @@ type App struct {
 
 	monthView  *MonthView
     weekView   *WeekView
+    dayView    *DayView
 	agendaView *AgendaView
 
 	uiState    *UIState
@@ -57,11 +58,13 @@ func NewApp() (*App, error) {
 	monthView := NewMonthView(uiState)
 	agendaView := NewAgendaView(uiState)
     weekView := NewWeekView(uiState)
+    dayView := NewDayView(uiState)
 
-    // Router: pages for month and week
+    // Router: pages for month, week, and day
     centerPages := tview.NewPages()
     centerPages.AddPage("month", monthView.Primitive(), true, true)
     centerPages.AddPage("week", weekView.Primitive(), true, false)
+    centerPages.AddPage("day", dayView.Primitive(), true, false)
 
     mainArea := tview.NewFlex().SetDirection(tview.FlexColumn).
         AddItem(centerPages, 0, 1, true).
@@ -82,7 +85,7 @@ func NewApp() (*App, error) {
 		header:     header,
 		monthView:  monthView,
         weekView:   weekView,
-        // keep agenda reference; week view is swapped via centerPages
+        dayView:    dayView,
 		agendaView: agendaView,
 		uiState:    uiState,
 	}
@@ -135,23 +138,44 @@ func (a *App) bindKeys() {
 				// Update visual indicators
 				a.monthView.SetFocused(false)
 				a.weekView.SetFocused(false)
+				a.dayView.SetFocused(false)
 				a.agendaView.SetFocused(true)
 			} else {
 				a.uiState.FocusedPane = PaneMonth
 				a.agendaView.SetFocused(false)
-				if a.uiState.CurrentView == ViewWeek {
+				a.monthView.SetFocused(false)
+				a.weekView.SetFocused(false)
+				a.dayView.SetFocused(false)
+				
+				switch a.uiState.CurrentView {
+				case ViewWeek:
 					a.app.SetFocus(a.weekView.Primitive())
 					a.weekView.SetFocused(true)
-					a.monthView.SetFocused(false)
-				} else {
+				case ViewDay:
+					a.app.SetFocus(a.dayView.Primitive())
+					a.dayView.SetFocused(true)
+				default:
 					a.app.SetFocus(a.monthView.Primitive())
 					a.monthView.SetFocused(true)
-					a.weekView.SetFocused(false)
 				}
 			}
 			return nil
 		}
 
+		// Space key cycles through views
+		if ev.Rune() == ' ' {
+			// Cycle: Month -> Week -> Day -> Month
+			switch a.uiState.CurrentView {
+			case ViewMonth:
+				a.switchToView(ViewWeek)
+			case ViewWeek:
+				a.switchToView(ViewDay)
+			case ViewDay:
+				a.switchToView(ViewMonth)
+			}
+			return nil
+		}
+		
 		// Global shortcuts that work regardless of focus
 		switch ev.Rune() {
 		case 'q':
@@ -160,26 +184,6 @@ func (a *App) bindKeys() {
 		case '?':
 			ShowHelpModal(a.app, a.pages)
 			return nil
-		case 'w':
-			a.uiState.CurrentView = ViewWeek
-			a.center.SwitchToPage("week")
-			// Update focus indicators if calendar is focused
-			if a.uiState.FocusedPane == PaneMonth {
-				a.monthView.SetFocused(false)
-				a.weekView.SetFocused(true)
-			}
-			a.refreshAll()
-			return nil
-		case 'm':
-			a.uiState.CurrentView = ViewMonth
-			a.center.SwitchToPage("month")
-			// Update focus indicators if calendar is focused
-			if a.uiState.FocusedPane == PaneMonth {
-				a.weekView.SetFocused(false)
-				a.monthView.SetFocused(true)
-			}
-			a.refreshAll()
-			return nil
 		case 'g':
 			a.uiState.SelectedDate = time.Now()
 			a.refreshAll()
@@ -187,9 +191,14 @@ func (a *App) bindKeys() {
 		case 'a':
 			// Add new event
 			defaultTime := ""
-			// If in week view and calendar is focused, get the selected hour
-			if a.uiState.CurrentView == ViewWeek && a.uiState.FocusedPane == PaneMonth {
-				defaultTime = a.weekView.GetSelectedHour()
+			// Get the selected hour if in week or day view and calendar is focused
+			if a.uiState.FocusedPane == PaneMonth {
+				switch a.uiState.CurrentView {
+				case ViewWeek:
+					defaultTime = a.weekView.GetSelectedHour()
+				case ViewDay:
+					defaultTime = a.dayView.GetSelectedHour()
+				}
 			}
 			modals.ShowNewEventModal(a.app, a.pages, a.uiState.SelectedDate, defaultTime, func() {
 				a.refreshAll()
@@ -258,8 +267,8 @@ func (a *App) bindKeys() {
 				return nil
 			case 'j':
 				// vim-style down
-				if a.uiState.CurrentView == ViewWeek {
-					// In week view, let table handle it (moves by hour)
+				if a.uiState.CurrentView == ViewWeek || a.uiState.CurrentView == ViewDay {
+					// In week/day view, let table handle it (moves by hour)
 					return ev
 				}
 				// In month view: next week
@@ -268,8 +277,8 @@ func (a *App) bindKeys() {
 				return nil
 			case 'k':
 				// vim-style up
-				if a.uiState.CurrentView == ViewWeek {
-					// In week view, let table handle it (moves by hour)
+				if a.uiState.CurrentView == ViewWeek || a.uiState.CurrentView == ViewDay {
+					// In week/day view, let table handle it (moves by hour)
 					return ev
 				}
 				// In month view: previous week
@@ -288,8 +297,8 @@ func (a *App) bindKeys() {
 				a.refreshAll()
 				return nil
 			case tcell.KeyUp:
-				if a.uiState.CurrentView == ViewWeek {
-					// In week view, let table handle it (moves by hour row)
+				if a.uiState.CurrentView == ViewWeek || a.uiState.CurrentView == ViewDay {
+					// In week/day view, let table handle it (moves by hour row)
 					return ev
 				}
 				// In month view: previous week
@@ -297,8 +306,8 @@ func (a *App) bindKeys() {
 				a.refreshAll()
 				return nil
 			case tcell.KeyDown:
-				if a.uiState.CurrentView == ViewWeek {
-					// In week view, let table handle it (moves by hour row)
+				if a.uiState.CurrentView == ViewWeek || a.uiState.CurrentView == ViewDay {
+					// In week/day view, let table handle it (moves by hour row)
 					return ev
 				}
 				// In month view: next week
@@ -331,11 +340,52 @@ func (a *App) bindKeys() {
 	})
 }
 
+func (a *App) switchToView(view ViewKind) {
+	a.uiState.CurrentView = view
+	
+	// Update focus indicators if calendar is focused
+	if a.uiState.FocusedPane == PaneMonth {
+		a.monthView.SetFocused(false)
+		a.weekView.SetFocused(false)
+		a.dayView.SetFocused(false)
+		
+		switch view {
+		case ViewMonth:
+			a.center.SwitchToPage("month")
+			a.monthView.SetFocused(true)
+			a.app.SetFocus(a.monthView.Primitive())
+		case ViewWeek:
+			a.center.SwitchToPage("week")
+			a.weekView.SetFocused(true)
+			a.app.SetFocus(a.weekView.Primitive())
+		case ViewDay:
+			a.center.SwitchToPage("day")
+			a.dayView.SetFocused(true)
+			a.app.SetFocus(a.dayView.Primitive())
+		}
+	} else {
+		// Just switch the page without changing focus
+		switch view {
+		case ViewMonth:
+			a.center.SwitchToPage("month")
+		case ViewWeek:
+			a.center.SwitchToPage("week")
+		case ViewDay:
+			a.center.SwitchToPage("day")
+		}
+	}
+	
+	a.refreshAll()
+}
+
 func (a *App) refreshAll() {
     a.header.SetText(renderHeader(a.uiState.SelectedDate))
     a.monthView.Refresh()
     if a.weekView != nil {
         a.weekView.Refresh()
+    }
+    if a.dayView != nil {
+        a.dayView.Refresh()
     }
     a.agendaView.Refresh()
 }
