@@ -17,6 +17,7 @@ const (
 	MonthView ViewMode = iota
 	WeekView
 	DayView
+	ListView
 )
 
 // FocusedPane represents which pane has focus
@@ -49,6 +50,7 @@ type Model struct {
 	monthView    *MonthViewModel
 	weekView     *WeekViewModel
 	dayView      *DayViewModel
+	listView     *ListViewModel
 	agendaView   *AgendaViewModel
 	
 	// Modal state
@@ -209,6 +211,7 @@ func NewModel() *Model {
 	m.weekView = NewWeekViewModel(&m.selectedDate, &m.selectedHour, m.styles)
 	m.weekView.SetShowMiniMonth(m.showMiniMonth)
 	m.dayView = NewDayViewModel(&m.selectedDate, &m.selectedHour, m.styles)
+	m.listView = NewListViewModel(&m.selectedDate, m.styles, cfg)
 	m.agendaView = NewAgendaViewModel(&m.selectedDate, m.styles, cfg)
 	
 	// Load initial events
@@ -306,6 +309,8 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					m.selectedHour = 22
 				}
 			case DayView:
+				m.currentView = ListView
+			case ListView:
 				m.currentView = MonthView
 			}
 			
@@ -403,7 +408,10 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			// Handle navigation based on focused pane
 			if m.focusedPane == CalendarPane {
 				oldDate := m.selectedDate
-				m.handleCalendarNavigation(msg)
+				cmd := m.handleCalendarNavigation(msg)
+				if cmd != nil {
+					cmds = append(cmds, cmd)
+				}
 				if !sameDay(oldDate, m.selectedDate) {
 					m.loadEvents()
 					cmds = append(cmds, loadEventsCmd(m.selectedDate))
@@ -421,7 +429,7 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	return m, tea.Batch(cmds...)
 }
 
-func (m *Model) handleCalendarNavigation(msg tea.KeyMsg) {
+func (m *Model) handleCalendarNavigation(msg tea.KeyMsg) tea.Cmd {
 	switch msg.String() {
 	case "h", "left":
 		m.selectedDate = m.selectedDate.AddDate(0, 0, -1)
@@ -440,6 +448,9 @@ func (m *Model) handleCalendarNavigation(msg tea.KeyMsg) {
 			if m.selectedHour < 22 { // Day view goes to 22:00
 				m.selectedHour++
 			}
+		} else if m.currentView == ListView {
+			// Move down in list
+			m.listView.MoveDown()
 		}
 	case "k", "up":
 		if m.currentView == MonthView {
@@ -454,20 +465,49 @@ func (m *Model) handleCalendarNavigation(msg tea.KeyMsg) {
 			if m.selectedHour > 6 { // Day view starts at 6:00
 				m.selectedHour--
 			}
+		} else if m.currentView == ListView {
+			// Move up in list
+			m.listView.MoveUp()
 		}
 	case "ctrl+u":
 		if m.currentView == WeekView {
 			m.selectedDate = m.selectedDate.AddDate(0, 0, -7)
+		} else if m.currentView == ListView {
+			m.listView.PageUp()
 		} else {
 			m.selectedDate = m.selectedDate.AddDate(0, -1, 0)
 		}
 	case "ctrl+d":
 		if m.currentView == WeekView {
 			m.selectedDate = m.selectedDate.AddDate(0, 0, 7)
+		} else if m.currentView == ListView {
+			m.listView.PageDown()
 		} else {
 			m.selectedDate = m.selectedDate.AddDate(0, 1, 0)
 		}
+	case "e":
+		// Edit selected event in list view
+		if m.currentView == ListView {
+			if evt := m.listView.GetSelectedEvent(); evt != nil {
+				modal := NewEventModal(evt.Date, evt.Event, m.styles, m.config.Categories)
+				modal.width = m.width
+				modal.height = m.height
+				m.modalStack = append(m.modalStack, modal)
+				return modal.Init()
+			}
+		}
+	case "d":
+		// Delete selected event in list view
+		if m.currentView == ListView {
+			if evt := m.listView.GetSelectedEvent(); evt != nil {
+				if err := storage.DeleteEvent(evt.Date, evt.Event); err == nil {
+					m.listView.LoadEvents()
+					return loadEventsCmd(m.selectedDate)
+				}
+			}
+		}
 	}
+	return nil
 }
 
 func (m *Model) handleAgendaNavigation(msg tea.KeyMsg) tea.Cmd {
@@ -529,6 +569,11 @@ func (m *Model) updateViewStyles() {
 		m.dayView = NewDayViewModel(&m.selectedDate, &m.selectedHour, m.styles)
 		m.dayView.SetSize(width, height)
 	}
+	if m.listView != nil {
+		width, height := m.listView.width, m.listView.height
+		m.listView = NewListViewModel(&m.selectedDate, m.styles, m.config)
+		m.listView.SetSize(width, height)
+	}
 	if m.agendaView != nil {
 		width, height := m.agendaView.width, m.agendaView.height
 		events := m.agendaView.events
@@ -560,6 +605,9 @@ func (m *Model) updateViewSizes() {
 		if m.dayView != nil {
 			m.dayView.SetSize(calendarWidth, calendarHeight)
 		}
+		if m.listView != nil {
+			m.listView.SetSize(m.width - 2, m.height - 3)
+		}
 		if m.agendaView != nil {
 			m.agendaView.SetSize(calendarWidth, agendaHeight)
 		}
@@ -580,6 +628,9 @@ func (m *Model) updateViewSizes() {
 		}
 		if m.dayView != nil {
 			m.dayView.SetSize(calendarWidth, calendarHeight)
+		}
+		if m.listView != nil {
+			m.listView.SetSize(m.width - 2, m.height - 3)
 		}
 		if m.agendaView != nil {
 			m.agendaView.SetSize(agendaWidth, calendarHeight)
@@ -629,6 +680,9 @@ func (m *Model) View() string {
 	case DayView:
 		calendarView = m.dayView.View()
 		viewTitle = " Daily "
+	case ListView:
+		calendarView = m.listView.View()
+		viewTitle = " List "
 	}
 	
 	// Create borders for calendar and agenda
@@ -650,9 +704,18 @@ func (m *Model) View() string {
 		agendaBorder = focusedBorderStyle
 	}
 	
-	// Render based on agenda position
+	// Render based on view mode and agenda position
 	var main string
-	if m.agendaBottom {
+	
+	// List view doesn't need agenda pane (it IS the agenda)
+	if m.currentView == ListView {
+		// Full width list view
+		listBox := focusedBorderStyle.
+			Width(m.width - 2).
+			Height(m.height - 3).
+			Render(lipgloss.NewStyle().Padding(0, 1).Render(viewTitle) + "\n" + calendarView)
+		main = listBox
+	} else if m.agendaBottom {
 		// Agenda at bottom layout - give it more space (about 1/3 of screen)
 		agendaHeight := m.height / 3
 		if agendaHeight < 10 {

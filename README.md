@@ -16,13 +16,14 @@ A fast, keyboard-driven terminal calendar built with Bubble Tea.
 
 ## Features
 
-- **Three Views**: Month, Week, and Day views with seamless navigation
+- **Four Views**: Month, Week, Day, and List views with seamless navigation
 - **Event Management**: Create, edit, and delete events with modern modal interface
 - **Category System**: Color-coded event categories with persistent configuration
 - **KeyJump Navigation**: EasyMotion-style instant date jumping (press `f`)
 - **Themes**: 6 built-in color schemes (cycle with `s`)
 - **Vim Keys**: Full keyboard navigation with vim-style keybindings
 - **Smart Layout**: Toggleable agenda position and mini-month display
+- **List View**: Chronological event listing with grouped date display
 
 ## Installation
 
@@ -61,6 +62,14 @@ Inspired by vim's EasyMotion, press `f` to enter jump mode where letter overlays
 
 ### Event Categories
 Create and assign color-coded categories to your events. Categories are displayed throughout the interface with their assigned colors and can be easily selected when creating events.
+
+### List View
+The List view provides a chronological agenda of all upcoming events:
+- Groups events by date with clear headers
+- Shows "Today" and "Tomorrow" labels for easy scanning
+- Displays events with time, category color, and title
+- Supports smooth scrolling with `j/k` and page navigation with `Ctrl+u/Ctrl+d`
+- No separate agenda pane needed - the list IS the agenda!
 
 ### Modern Event Modal
 Beautiful, intuitive event creation interface with:
