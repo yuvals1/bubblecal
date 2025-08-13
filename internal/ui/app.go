@@ -109,6 +109,23 @@ func (a *App) Run() error {
 
 func (a *App) bindKeys() {
 	a.app.SetInputCapture(func(ev *tcell.EventKey) *tcell.EventKey {
+		// Tab always toggles focus
+		if ev.Key() == tcell.KeyTab {
+			if a.uiState.FocusedPane == PaneMonth {
+				a.uiState.FocusedPane = PaneAgenda
+				a.app.SetFocus(a.agendaView.Primitive())
+			} else {
+				a.uiState.FocusedPane = PaneMonth
+				if a.uiState.CurrentView == ViewWeek {
+					a.app.SetFocus(a.weekView.Primitive())
+				} else {
+					a.app.SetFocus(a.monthView.Primitive())
+				}
+			}
+			return nil
+		}
+
+		// Global shortcuts that work regardless of focus
 		switch ev.Rune() {
 		case 'q':
 			a.app.Stop()
@@ -116,51 +133,19 @@ func (a *App) bindKeys() {
 		case '?':
 			ShowHelpModal(a.app, a.pages)
 			return nil
-        case 'h':
-            // vim-style left: previous day
-            a.uiState.SelectedDate = a.uiState.SelectedDate.AddDate(0, 0, -1)
-            a.refreshAll()
-            return nil
-        case 'l':
-            // vim-style right: next day
-            a.uiState.SelectedDate = a.uiState.SelectedDate.AddDate(0, 0, 1)
-            a.refreshAll()
-            return nil
-        case 'k':
-            // vim-style up
-            if a.uiState.CurrentView == ViewWeek {
-                // In week view, delegate to the table's navigation (moves by hour)
-                return ev
-            } else {
-                // In month view: previous week
-                a.uiState.SelectedDate = a.uiState.SelectedDate.AddDate(0, 0, -7)
-                a.refreshAll()
-                return nil
-            }
-        case 'j':
-            // vim-style down
-            if a.uiState.CurrentView == ViewWeek {
-                // In week view, delegate to the table's navigation (moves by hour)
-                return ev
-            } else {
-                // In month view: next week
-                a.uiState.SelectedDate = a.uiState.SelectedDate.AddDate(0, 0, 7)
-                a.refreshAll()
-                return nil
-            }
-        case 'w':
-            a.uiState.CurrentView = ViewWeek
-            a.center.SwitchToPage("week")
-            a.refreshAll()
-            return nil
-        case 'm':
-            a.uiState.CurrentView = ViewMonth
-            a.center.SwitchToPage("month")
-            a.refreshAll()
-            return nil
+		case 'w':
+			a.uiState.CurrentView = ViewWeek
+			a.center.SwitchToPage("week")
+			a.refreshAll()
+			return nil
+		case 'm':
+			a.uiState.CurrentView = ViewMonth
+			a.center.SwitchToPage("month")
+			a.refreshAll()
+			return nil
 		case 'g':
 			a.uiState.SelectedDate = time.Now()
-            a.refreshAll()
+			a.refreshAll()
 			return nil
 		case 'a':
 			// Add new event
@@ -168,63 +153,139 @@ func (a *App) bindKeys() {
 				a.refreshAll()
 			})
 			return nil
-		case 'e':
-			// Edit selected event
-			if a.agendaView.GetSelectedEvent() != nil {
-				modals.ShowEditEventModal(a.app, a.pages, a.uiState.SelectedDate, 
-					a.agendaView.GetSelectedEvent(), a.agendaView.GetSelectedIndex(), func() {
-					a.refreshAll()
-				})
-			}
-			return nil
-		case 'd':
-			// Delete selected event
-			if a.agendaView.GetSelectedEvent() != nil {
-				modals.ShowDeleteConfirmModal(a.app, a.pages, a.uiState.SelectedDate,
-					a.agendaView.GetSelectedEvent(), a.agendaView.GetSelectedIndex(), func() {
-					a.refreshAll()
-				})
-			}
-			return nil
 		}
-		switch ev.Key() {
-		case tcell.KeyLeft:
-			a.uiState.SelectedDate = a.uiState.SelectedDate.AddDate(0, 0, -1)
-		case tcell.KeyRight:
-			a.uiState.SelectedDate = a.uiState.SelectedDate.AddDate(0, 0, 1)
-		case tcell.KeyUp:
-			if a.uiState.CurrentView == ViewWeek {
-				// In week view, delegate to the table's navigation (moves by hour row)
-				return ev
+
+		// Handle navigation based on which pane is focused
+		if a.uiState.FocusedPane == PaneAgenda {
+			// Agenda is focused - handle agenda-specific keys
+			switch ev.Rune() {
+			case 'e':
+				// Edit selected event
+				if a.agendaView.GetSelectedEvent() != nil {
+					modals.ShowEditEventModal(a.app, a.pages, a.uiState.SelectedDate, 
+						a.agendaView.GetSelectedEvent(), a.agendaView.GetSelectedIndex(), func() {
+						a.refreshAll()
+					})
+				}
+				return nil
+			case 'd':
+				// Delete selected event
+				if a.agendaView.GetSelectedEvent() != nil {
+					modals.ShowDeleteConfirmModal(a.app, a.pages, a.uiState.SelectedDate,
+						a.agendaView.GetSelectedEvent(), a.agendaView.GetSelectedIndex(), func() {
+						a.refreshAll()
+					})
+				}
+				return nil
+			case 'h', 'l':
+				// Still allow h/l to change dates even when agenda is focused
+				if ev.Rune() == 'h' {
+					a.uiState.SelectedDate = a.uiState.SelectedDate.AddDate(0, 0, -1)
+				} else {
+					a.uiState.SelectedDate = a.uiState.SelectedDate.AddDate(0, 0, 1)
+				}
+				a.refreshAll()
+				return nil
 			}
-			// In month view: previous week
-			a.uiState.SelectedDate = a.uiState.SelectedDate.AddDate(0, 0, -7)
-		case tcell.KeyDown:
-			if a.uiState.CurrentView == ViewWeek {
-				// In week view, delegate to the table's navigation (moves by hour row)
+			
+			switch ev.Key() {
+			case tcell.KeyUp, tcell.KeyDown:
+				// Let the list handle these
 				return ev
+			case tcell.KeyLeft:
+				a.uiState.SelectedDate = a.uiState.SelectedDate.AddDate(0, 0, -1)
+				a.refreshAll()
+				return nil
+			case tcell.KeyRight:
+				a.uiState.SelectedDate = a.uiState.SelectedDate.AddDate(0, 0, 1)
+				a.refreshAll()
+				return nil
 			}
-			// In month view: next week
-			a.uiState.SelectedDate = a.uiState.SelectedDate.AddDate(0, 0, 7)
-        case tcell.KeyCtrlU:
-            // Week view: previous week; Month view: previous month
-            if a.uiState.CurrentView == ViewWeek {
-                a.uiState.SelectedDate = a.uiState.SelectedDate.AddDate(0, 0, -7)
-            } else {
-                a.uiState.SelectedDate = a.uiState.SelectedDate.AddDate(0, -1, 0)
-            }
-        case tcell.KeyCtrlD:
-            // Week view: next week; Month view: next month
-            if a.uiState.CurrentView == ViewWeek {
-                a.uiState.SelectedDate = a.uiState.SelectedDate.AddDate(0, 0, 7)
-            } else {
-                a.uiState.SelectedDate = a.uiState.SelectedDate.AddDate(0, 1, 0)
-            }
-		default:
-			return ev
+		} else {
+			// Calendar is focused - handle calendar navigation
+			switch ev.Rune() {
+			case 'h':
+				// vim-style left: previous day
+				a.uiState.SelectedDate = a.uiState.SelectedDate.AddDate(0, 0, -1)
+				a.refreshAll()
+				return nil
+			case 'l':
+				// vim-style right: next day
+				a.uiState.SelectedDate = a.uiState.SelectedDate.AddDate(0, 0, 1)
+				a.refreshAll()
+				return nil
+			case 'j':
+				// vim-style down
+				if a.uiState.CurrentView == ViewWeek {
+					// In week view, let table handle it (moves by hour)
+					return ev
+				}
+				// In month view: next week
+				a.uiState.SelectedDate = a.uiState.SelectedDate.AddDate(0, 0, 7)
+				a.refreshAll()
+				return nil
+			case 'k':
+				// vim-style up
+				if a.uiState.CurrentView == ViewWeek {
+					// In week view, let table handle it (moves by hour)
+					return ev
+				}
+				// In month view: previous week
+				a.uiState.SelectedDate = a.uiState.SelectedDate.AddDate(0, 0, -7)
+				a.refreshAll()
+				return nil
+			}
+
+			switch ev.Key() {
+			case tcell.KeyLeft:
+				a.uiState.SelectedDate = a.uiState.SelectedDate.AddDate(0, 0, -1)
+				a.refreshAll()
+				return nil
+			case tcell.KeyRight:
+				a.uiState.SelectedDate = a.uiState.SelectedDate.AddDate(0, 0, 1)
+				a.refreshAll()
+				return nil
+			case tcell.KeyUp:
+				if a.uiState.CurrentView == ViewWeek {
+					// In week view, let table handle it (moves by hour row)
+					return ev
+				}
+				// In month view: previous week
+				a.uiState.SelectedDate = a.uiState.SelectedDate.AddDate(0, 0, -7)
+				a.refreshAll()
+				return nil
+			case tcell.KeyDown:
+				if a.uiState.CurrentView == ViewWeek {
+					// In week view, let table handle it (moves by hour row)
+					return ev
+				}
+				// In month view: next week
+				a.uiState.SelectedDate = a.uiState.SelectedDate.AddDate(0, 0, 7)
+				a.refreshAll()
+				return nil
+			case tcell.KeyCtrlU:
+				// Week view: previous week; Month view: previous month
+				if a.uiState.CurrentView == ViewWeek {
+					a.uiState.SelectedDate = a.uiState.SelectedDate.AddDate(0, 0, -7)
+				} else {
+					a.uiState.SelectedDate = a.uiState.SelectedDate.AddDate(0, -1, 0)
+				}
+				a.refreshAll()
+				return nil
+			case tcell.KeyCtrlD:
+				// Week view: next week; Month view: next month
+				if a.uiState.CurrentView == ViewWeek {
+					a.uiState.SelectedDate = a.uiState.SelectedDate.AddDate(0, 0, 7)
+				} else {
+					a.uiState.SelectedDate = a.uiState.SelectedDate.AddDate(0, 1, 0)
+				}
+				a.refreshAll()
+				return nil
+			}
 		}
-        a.refreshAll()
-		return nil
+
+		// Default: pass through
+		return ev
 	})
 }
 

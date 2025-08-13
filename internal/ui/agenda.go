@@ -6,6 +6,7 @@ import (
 	"simple-tui-cal/internal/storage"
 	"time"
 
+	"github.com/gdamore/tcell/v2"
 	"github.com/rivo/tview"
 )
 
@@ -20,6 +21,28 @@ func NewAgendaView(state *UIState) *AgendaView {
     l.ShowSecondaryText(false)
     l.SetBorder(true).SetTitle("Agenda")
     l.SetWrapAround(false)
+	
+	// Add vim key bindings for the list
+	l.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
+		switch event.Rune() {
+		case 'j':
+			// Move down
+			current := l.GetCurrentItem()
+			if current < l.GetItemCount()-1 {
+				l.SetCurrentItem(current + 1)
+			}
+			return nil
+		case 'k':
+			// Move up
+			current := l.GetCurrentItem()
+			if current > 0 {
+				l.SetCurrentItem(current - 1)
+			}
+			return nil
+		}
+		return event
+	})
+	
 	ag := &AgendaView{uiState: state, list: l}
 	ag.Refresh()
 	return ag

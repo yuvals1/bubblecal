@@ -14,6 +14,7 @@ func ShowHelpModal(app *tview.Application, pages *tview.Pages) {
     helpText += "[::b]Navigation[::-]\n"
     helpText += "  h/l or ←/→: Move by day\n"
     helpText += "  j/k or ↑/↓: Month: ±1 week, Week: ±1 hour\n"
+    helpText += "  Tab: Toggle focus (calendar ↔ agenda)\n"
     helpText += "  g: Go to today\n"
     helpText += "\n"
     helpText += "[::b]Paging[::-]\n"
