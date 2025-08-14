@@ -103,7 +103,7 @@ func (a *AgendaViewModel) ensureVisible() {
 	if len(a.events) == 0 {
 		return
 	}
-	visibleHeight := a.height - 8 // Account for borders, padding, and scroll indicators
+	visibleHeight := a.height - 2 // Account for minimal padding
 	if visibleHeight < 1 {
 		visibleHeight = 1
 	}
@@ -132,7 +132,7 @@ func (a *AgendaViewModel) View() string {
 			Render("No events scheduled")
 		lines = append(lines, noEvents)
 	} else {
-		visibleHeight := a.height - 6 // More space for content
+		visibleHeight := a.height - 2 // Account for borders/padding
 		a.ensureVisible() // Make sure selected item is visible
 		endIndex := a.scrollOffset + visibleHeight
 		if endIndex > len(a.events) {
@@ -178,7 +178,7 @@ func (a *AgendaViewModel) View() string {
 	}
 	
 	// Pad to fill height if needed
-	for len(lines) < a.height-6 {
+	for len(lines) < a.height-2 {
 		lines = append(lines, "")
 	}
 	
