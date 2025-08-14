@@ -557,20 +557,24 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.modalStack = append(m.modalStack, modal)
 			return m, nil
 			
+		case "up", "down":
+			// Arrow keys always control agenda
+			m.handleAgendaArrowKeys(msg)
+			
 		default:
-			// Handle navigation based on focused pane
-			if m.focusedPane == CalendarPane {
-				oldDate := m.selectedDate
-				cmd := m.handleCalendarNavigation(msg)
-				if cmd != nil {
-					cmds = append(cmds, cmd)
-				}
-				if !sameDay(oldDate, m.selectedDate) {
-					m.loadEvents()
-					cmds = append(cmds, loadEventsCmd(m.selectedDate))
-				}
-			} else {
-				// Handle agenda navigation
+			// hjkl always control calendar, other keys depend on focus
+			oldDate := m.selectedDate
+			cmd := m.handleCalendarNavigation(msg)
+			if cmd != nil {
+				cmds = append(cmds, cmd)
+			}
+			if !sameDay(oldDate, m.selectedDate) {
+				m.loadEvents()
+				cmds = append(cmds, loadEventsCmd(m.selectedDate))
+			}
+			
+			// Also handle agenda navigation for focused pane
+			if m.focusedPane == AgendaPane {
 				cmd := m.handleAgendaNavigation(msg)
 				if cmd != nil {
 					cmds = append(cmds, cmd)
@@ -582,13 +586,22 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	return m, tea.Batch(cmds...)
 }
 
+func (m *Model) handleAgendaArrowKeys(msg tea.KeyMsg) {
+	switch msg.String() {
+	case "up":
+		m.agendaView.MoveUp()
+	case "down":
+		m.agendaView.MoveDown()
+	}
+}
+
 func (m *Model) handleCalendarNavigation(msg tea.KeyMsg) tea.Cmd {
 	switch msg.String() {
-	case "h", "left":
+	case "h":
 		m.selectedDate = m.selectedDate.AddDate(0, 0, -1)
-	case "l", "right":
+	case "l":
 		m.selectedDate = m.selectedDate.AddDate(0, 0, 1)
-	case "j", "down":
+	case "j":
 		if m.currentView == MonthView {
 			m.selectedDate = m.selectedDate.AddDate(0, 0, 7)
 		} else if m.currentView == WeekView {
@@ -607,7 +620,7 @@ func (m *Model) handleCalendarNavigation(msg tea.KeyMsg) tea.Cmd {
 			// Move down in list
 			m.listView.MoveDown()
 		}
-	case "k", "up":
+	case "k":
 		if m.currentView == MonthView {
 			m.selectedDate = m.selectedDate.AddDate(0, 0, -7)
 		} else if m.currentView == WeekView {
@@ -670,10 +683,6 @@ func (m *Model) handleCalendarNavigation(msg tea.KeyMsg) tea.Cmd {
 
 func (m *Model) handleAgendaNavigation(msg tea.KeyMsg) tea.Cmd {
 	switch msg.String() {
-	case "j", "down":
-		m.agendaView.MoveDown()
-	case "k", "up":
-		m.agendaView.MoveUp()
 	case "e":
 		// Edit selected event
 		if idx := m.agendaView.GetSelectedIndex(); idx >= 0 && idx < len(m.events) {
@@ -695,14 +704,6 @@ func (m *Model) handleAgendaNavigation(msg tea.KeyMsg) tea.Cmd {
 			m.modalStack = append(m.modalStack, modal)
 			return modal.Init()
 		}
-	case "h", "left":
-		m.selectedDate = m.selectedDate.AddDate(0, 0, -1)
-		m.loadEvents()
-		return loadEventsCmd(m.selectedDate)
-	case "l", "right":
-		m.selectedDate = m.selectedDate.AddDate(0, 0, 1)
-		m.loadEvents()
-		return loadEventsCmd(m.selectedDate)
 	}
 	return nil
 }
