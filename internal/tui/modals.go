@@ -641,16 +641,14 @@ func (m *DeleteModal) View() string {
 // HelpModal for showing help
 type HelpModal struct {
 	currentView ViewMode
-	focusedPane FocusedPane
 	styles      *Styles
 	width       int
 	height      int
 }
 
-func NewHelpModal(view ViewMode, pane FocusedPane, styles *Styles) *HelpModal {
+func NewHelpModal(view ViewMode, styles *Styles) *HelpModal {
 	return &HelpModal{
 		currentView: view,
-		focusedPane: pane,
 		styles:      styles,
 	}
 }
@@ -714,18 +712,17 @@ func (m *HelpModal) View() string {
 		helpText = append(helpText, "  j/k ↑/↓   Move between hours")
 		helpText = append(helpText, "  Ctrl+U/D  Previous/next day")
 	}
-	helpText = append(helpText, "  Enter     Focus agenda / Esc  Return to calendar")
+	helpText = append(helpText, "  ↑/↓       Navigate agenda")
+	helpText = append(helpText, "  hjkl      Navigate calendar")
 	helpText = append(helpText, "  t or .    Go to today (current hour in Week/Day)")
 	helpText = append(helpText, "")
 	
 	helpText = append(helpText, lipgloss.NewStyle().Bold(true).Render("Events:"))
 	helpText = append(helpText, "  a         Add event")
-	if m.focusedPane == AgendaPane {
-		helpText = append(helpText, "  e         Edit selected event")
-		helpText = append(helpText, "  d         Delete selected event")
-	} else {
-		helpText = append(helpText, "  (Focus agenda to edit/delete)")
-	}
+	helpText = append(helpText, "  e         Edit selected event (agenda/list)")
+	helpText = append(helpText, "  d         Delete selected event (agenda/list)")
+	helpText = append(helpText, "  y         Yank (copy) selected event")
+	helpText = append(helpText, "  p         Paste yanked event")
 	helpText = append(helpText, "")
 	
 	helpText = append(helpText, lipgloss.NewStyle().Bold(true).Render("General:"))

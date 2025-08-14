@@ -22,20 +22,11 @@ const (
 	ListView
 )
 
-// FocusedPane represents which pane has focus
-type FocusedPane int
-
-const (
-	CalendarPane FocusedPane = iota
-	AgendaPane
-)
-
 // Model is the main application model
 type Model struct {
 	// Core state
 	selectedDate time.Time
 	currentView  ViewMode
-	focusedPane  FocusedPane
 	selectedHour int // Selected hour for week/day views
 	
 	// Data
@@ -205,7 +196,6 @@ func NewModel() *Model {
 	m := &Model{
 		selectedDate: now,
 		currentView:  MonthView,
-		focusedPane:  CalendarPane,
 		selectedHour: 12, // Default to noon
 		showMiniMonth: cfg.ShowMiniMonth,
 		agendaBottom:  cfg.AgendaBottom,
@@ -284,21 +274,19 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		if msg.String() == "g" {
 			if m.lastKey == "g" {
 				// gg - go to top
-				if m.focusedPane == CalendarPane {
-					switch m.currentView {
-					case ListView:
-						m.listView.GoToTop()
-					case WeekView:
-						// Set to earliest event hour or default
-						m.selectedHour = m.getEarliestHourForWeek()
-					case DayView:
-						// Set to earliest event hour or default
-						m.selectedHour = m.getEarliestHourForDay()
-					}
-				} else {
-					// Agenda pane
-					m.agendaView.GoToTop()
+				// Go to top of calendar views
+				switch m.currentView {
+				case ListView:
+					m.listView.GoToTop()
+				case WeekView:
+					// Set to earliest event hour or default
+					m.selectedHour = m.getEarliestHourForWeek()
+				case DayView:
+					// Set to earliest event hour or default
+					m.selectedHour = m.getEarliestHourForDay()
 				}
+				// Also go to top of agenda
+				m.agendaView.GoToTop()
 				m.lastKey = ""
 				return m, nil
 			}
@@ -314,18 +302,6 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		switch msg.String() {
 		case "ctrl+c", "q":
 			return m, tea.Quit
-			
-		case "enter":
-			// Enter focuses the agenda pane
-			if m.focusedPane == CalendarPane {
-				m.focusedPane = AgendaPane
-			}
-			
-		case "esc":
-			// Escape returns focus to calendar pane
-			if m.focusedPane == AgendaPane {
-				m.focusedPane = CalendarPane
-			}
 			
 		case "]":
 			// Cycle forward through views
@@ -416,14 +392,12 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case "a":
 			// Add new event
 			defaultTime := ""
-			// Get the selected hour if in week or day view and calendar is focused
-			if m.focusedPane == CalendarPane {
-				switch m.currentView {
-				case WeekView:
-					defaultTime = m.weekView.GetSelectedHour()
-				case DayView:
-					defaultTime = m.dayView.GetSelectedHour()
-				}
+			// Get the selected hour if in week or day view
+			switch m.currentView {
+			case WeekView:
+				defaultTime = m.weekView.GetSelectedHour()
+			case DayView:
+				defaultTime = m.dayView.GetSelectedHour()
 			}
 			modal := NewEventModalWithTime(m.selectedDate, nil, defaultTime, m.styles, m.config.Categories)
 			// Set modal window size
@@ -472,36 +446,32 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			
 		case "G":
 			// Go to bottom
-			if m.focusedPane == CalendarPane {
-				switch m.currentView {
-				case ListView:
-					m.listView.GoToBottom()
-				case WeekView:
-					// Set to latest event hour or default
-					m.selectedHour = m.getLatestHourForWeek()
-				case DayView:
-					// Set to latest event hour or default
-					m.selectedHour = m.getLatestHourForDay()
-				}
-			} else {
-				// Agenda pane
-				m.agendaView.GoToBottom()
+			switch m.currentView {
+			case ListView:
+				m.listView.GoToBottom()
+			case WeekView:
+				// Set to latest event hour or default
+				m.selectedHour = m.getLatestHourForWeek()
+			case DayView:
+				// Set to latest event hour or default
+				m.selectedHour = m.getLatestHourForDay()
 			}
+			// Also go to bottom of agenda
+			m.agendaView.GoToBottom()
 			
 		case "y":
-			// Yank (copy) selected event
-			if m.focusedPane == AgendaPane {
-				// Yank from agenda
-				if idx := m.agendaView.GetSelectedIndex(); idx >= 0 && idx < len(m.events) {
-					m.yankedEvent = m.events[idx]
-				}
-			} else if m.currentView == ListView {
+			// Yank (copy) selected event from agenda or list view
+			if m.currentView == ListView {
 				// Yank from list view
 				if evt := m.listView.GetSelectedEvent(); evt != nil {
 					m.yankedEvent = evt.Event
 				}
+			} else {
+				// Yank from agenda (works regardless of focus)
+				if idx := m.agendaView.GetSelectedIndex(); idx >= 0 && idx < len(m.events) {
+					m.yankedEvent = m.events[idx]
+				}
 			}
-			// Could add visual feedback here
 			
 		case "p":
 			// Paste yanked event to current date
@@ -550,12 +520,56 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			
 		case "?":
 			// Show help
-			modal := NewHelpModal(m.currentView, m.focusedPane, m.styles)
+			modal := NewHelpModal(m.currentView, m.styles)
 			// Set modal window size
 			modal.width = m.width
 			modal.height = m.height
 			m.modalStack = append(m.modalStack, modal)
 			return m, nil
+			
+		case "e":
+			// Edit selected event (works on agenda or list view)
+			if m.currentView == ListView {
+				if evt := m.listView.GetSelectedEvent(); evt != nil {
+					modal := NewEventModal(evt.Date, evt.Event, m.styles, m.config.Categories)
+					modal.width = m.width
+					modal.height = m.height
+					m.modalStack = append(m.modalStack, modal)
+					return m, modal.Init()
+				}
+			} else {
+				// Edit from agenda (works regardless of focus)
+				if idx := m.agendaView.GetSelectedIndex(); idx >= 0 && idx < len(m.events) {
+					event := m.events[idx]
+					modal := NewEventModal(m.selectedDate, event, m.styles, m.config.Categories)
+					modal.width = m.width
+					modal.height = m.height
+					m.modalStack = append(m.modalStack, modal)
+					return m, modal.Init()
+				}
+			}
+			
+		case "d":
+			// Delete selected event (works on agenda or list view)
+			if m.currentView == ListView {
+				if evt := m.listView.GetSelectedEvent(); evt != nil {
+					modal := NewDeleteModal(evt.Date, evt.Event, 0, m.styles)
+					modal.width = m.width
+					modal.height = m.height
+					m.modalStack = append(m.modalStack, modal)
+					return m, modal.Init()
+				}
+			} else {
+				// Delete from agenda (works regardless of focus)
+				if idx := m.agendaView.GetSelectedIndex(); idx >= 0 && idx < len(m.events) {
+					event := m.events[idx]
+					modal := NewDeleteModal(m.selectedDate, event, idx, m.styles)
+					modal.width = m.width
+					modal.height = m.height
+					m.modalStack = append(m.modalStack, modal)
+					return m, modal.Init()
+				}
+			}
 			
 		case "up", "down":
 			// Arrow keys always control agenda
@@ -573,13 +587,6 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				cmds = append(cmds, loadEventsCmd(m.selectedDate))
 			}
 			
-			// Also handle agenda navigation for focused pane
-			if m.focusedPane == AgendaPane {
-				cmd := m.handleAgendaNavigation(msg)
-				if cmd != nil {
-					cmds = append(cmds, cmd)
-				}
-			}
 		}
 	}
 	
@@ -655,58 +662,10 @@ func (m *Model) handleCalendarNavigation(msg tea.KeyMsg) tea.Cmd {
 		} else {
 			m.selectedDate = m.selectedDate.AddDate(0, 1, 0)
 		}
-	case "e":
-		// Edit selected event in list view
-		if m.currentView == ListView {
-			if evt := m.listView.GetSelectedEvent(); evt != nil {
-				modal := NewEventModal(evt.Date, evt.Event, m.styles, m.config.Categories)
-				modal.width = m.width
-				modal.height = m.height
-				m.modalStack = append(m.modalStack, modal)
-				return modal.Init()
-			}
-		}
-	case "d":
-		// Show delete confirmation modal in list view
-		if m.currentView == ListView {
-			if evt := m.listView.GetSelectedEvent(); evt != nil {
-				modal := NewDeleteModal(evt.Date, evt.Event, 0, m.styles)
-				modal.width = m.width
-				modal.height = m.height
-				m.modalStack = append(m.modalStack, modal)
-				return modal.Init()
-			}
-		}
 	}
 	return nil
 }
 
-func (m *Model) handleAgendaNavigation(msg tea.KeyMsg) tea.Cmd {
-	switch msg.String() {
-	case "e":
-		// Edit selected event
-		if idx := m.agendaView.GetSelectedIndex(); idx >= 0 && idx < len(m.events) {
-			event := m.events[idx]
-			modal := NewEventModal(m.selectedDate, event, m.styles, m.config.Categories)
-			// Set modal window size
-			modal.width = m.width
-			modal.height = m.height
-			m.modalStack = append(m.modalStack, modal)
-			return modal.Init()
-		}
-	case "d":
-		// Show delete confirmation modal
-		if idx := m.agendaView.GetSelectedIndex(); idx >= 0 && idx < len(m.events) {
-			event := m.events[idx]
-			modal := NewDeleteModal(m.selectedDate, event, idx, m.styles)
-			modal.width = m.width
-			modal.height = m.height
-			m.modalStack = append(m.modalStack, modal)
-			return modal.Init()
-		}
-	}
-	return nil
-}
 
 func (m *Model) updateViewStyles() {
 	// Update all views with new styles
@@ -843,27 +802,13 @@ func (m *Model) View() string {
 		Border(lipgloss.RoundedBorder()).
 		BorderForeground(lipgloss.Color("240"))
 	
-	focusedBorderStyle := lipgloss.NewStyle().
-		Border(lipgloss.RoundedBorder()).
-		BorderForeground(lipgloss.Color("220"))
-	
-	// Apply border styling based on focus
-	calendarBorder := borderStyle
-	agendaBorder := borderStyle
-	
-	if m.focusedPane == CalendarPane {
-		calendarBorder = focusedBorderStyle
-	} else {
-		agendaBorder = focusedBorderStyle
-	}
-	
 	// Render based on view mode and agenda position
 	var main string
 	
 	// List view doesn't need agenda pane (it IS the agenda)
 	if m.currentView == ListView {
 		// Full width list view
-		listBox := focusedBorderStyle.
+		listBox := borderStyle.
 			Width(m.width - 2).
 			Height(m.height - 4). // Account for header
 			Render(calendarView)
@@ -878,14 +823,14 @@ func (m *Model) View() string {
 		calendarHeight := m.height - agendaHeight - 4
 		
 		// Render calendar
-		calendarBox := calendarBorder.
+		calendarBox := borderStyle.
 			Width(calendarWidth).
 			MaxHeight(calendarHeight).
 			Render(calendarView)
 		
 		// Render agenda
 		agendaTitle := fmt.Sprintf(" Agenda (%s) ", m.selectedDate.Format("Jan 2, 2006"))
-		agendaBox := agendaBorder.
+		agendaBox := borderStyle.
 			Width(calendarWidth).
 			Height(agendaHeight).
 			Render(lipgloss.NewStyle().Padding(0, 1).Render(agendaTitle) + "\n" + m.agendaView.View())
@@ -902,13 +847,13 @@ func (m *Model) View() string {
 		contentHeight := m.height - 3
 		
 		// Render with borders
-		calendarBox := calendarBorder.
+		calendarBox := borderStyle.
 			Width(calendarWidth).
 			MaxHeight(contentHeight).
 			Render(calendarView)
 		
 		agendaTitle := fmt.Sprintf(" Agenda (%s) ", m.selectedDate.Format("Jan 2, 2006"))
-		agendaBox := agendaBorder.
+		agendaBox := borderStyle.
 			Width(agendaWidth).
 			Height(contentHeight).
 			Render(lipgloss.NewStyle().Padding(0, 1).Render(agendaTitle) + "\n" + m.agendaView.View())
@@ -1030,12 +975,6 @@ func (m *Model) initJumpMode() {
 	m.jumpKeys = []string{}
 	m.jumpTargets = []time.Time{}
 	
-	// Check if we're in agenda pane
-	if m.focusedPane == AgendaPane {
-		m.generateAgendaJumpTargets()
-		return
-	}
-	
 	// Generate jump targets based on current view
 	switch m.currentView {
 	case MonthView:
@@ -1046,6 +985,11 @@ func (m *Model) initJumpMode() {
 		m.generateDayJumpTargets()
 	case ListView:
 		m.generateListJumpTargets()
+	}
+	
+	// Also generate agenda jump targets if not in list view
+	if m.currentView != ListView {
+		m.generateAgendaJumpTargets()
 	}
 }
 
@@ -1064,18 +1008,18 @@ func (m *Model) handleJumpMode(key string) *Model {
 	for i, jumpKey := range m.jumpKeys {
 		if jumpKey == key {
 			// Handle different jump types
-			if m.focusedPane == AgendaPane {
-				// Jump to agenda item
-				if i < len(m.events) {
-					m.agendaView.JumpToIndex(i)
-				}
-			} else if m.currentView == ListView {
+			if m.currentView == ListView {
 				// Jump to list item
 				m.listView.JumpToIndex(i)
 			} else {
-				// Jump to calendar date
-				if i < len(m.jumpTargets) {
-					m.selectedDate = m.jumpTargets[i]
+				// Check if it's an agenda jump or calendar jump
+				if i < len(m.events) {
+					// Jump to agenda item
+					m.agendaView.JumpToIndex(i)
+				} else if i-len(m.events) < len(m.jumpTargets) {
+					// Jump to calendar date (offset by number of agenda items)
+					targetIdx := i - len(m.events)
+					m.selectedDate = m.jumpTargets[targetIdx]
 					m.loadEvents()
 				}
 			}
