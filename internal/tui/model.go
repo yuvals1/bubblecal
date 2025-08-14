@@ -51,6 +51,7 @@ type Model struct {
 	
 	// Jump mode state
 	jumpMode     bool
+	jumpModeType string // "calendar" or "agenda"
 	jumpKeys     []string
 	jumpTargets  []time.Time
 	
@@ -386,8 +387,12 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			cmds = append(cmds, loadEventsCmd(m.selectedDate))
 			
 		case "f":
-			// Enter jump mode
-			m.initJumpMode()
+			// Enter calendar jump mode
+			m.initJumpMode("calendar")
+			
+		case "F":
+			// Enter agenda jump mode  
+			m.initJumpMode("agenda")
 			
 		case "a":
 			// Add new event
@@ -873,12 +878,18 @@ func (m *Model) renderHeader() string {
 	headerText := " BubbleCal · " + dateText
 	
 	if m.jumpMode {
+		jumpLabel := "JUMP"
+		if m.jumpModeType == "calendar" {
+			jumpLabel = "JUMP CALENDAR"
+		} else if m.jumpModeType == "agenda" {
+			jumpLabel = "JUMP AGENDA"
+		}
 		jumpStatus := lipgloss.NewStyle().
 			Background(lipgloss.Color("196")).
 			Foreground(lipgloss.Color("15")).
 			Bold(true).
 			Padding(0, 1).
-			Render("JUMP MODE")
+			Render(jumpLabel)
 		headerText += " · " + jumpStatus
 	}
 	
@@ -970,26 +981,32 @@ func loadEventsCmd(date time.Time) tea.Cmd {
 
 // Jump mode functions
 
-func (m *Model) initJumpMode() {
+func (m *Model) initJumpMode(jumpType string) {
 	m.jumpMode = true
+	m.jumpModeType = jumpType
 	m.jumpKeys = []string{}
 	m.jumpTargets = []time.Time{}
 	
-	// Generate jump targets based on current view
-	switch m.currentView {
-	case MonthView:
-		m.generateMonthJumpTargets()
-	case WeekView:
-		m.generateWeekJumpTargets()
-	case DayView:
-		m.generateDayJumpTargets()
-	case ListView:
-		m.generateListJumpTargets()
-	}
-	
-	// Also generate agenda jump targets if not in list view
-	if m.currentView != ListView {
-		m.generateAgendaJumpTargets()
+	if jumpType == "calendar" {
+		// Generate jump targets based on current view
+		switch m.currentView {
+		case MonthView:
+			m.generateMonthJumpTargets()
+		case WeekView:
+			m.generateWeekJumpTargets()
+		case DayView:
+			m.generateDayJumpTargets()
+		case ListView:
+			m.generateListJumpTargets()
+		}
+	} else if jumpType == "agenda" {
+		// Generate agenda jump targets
+		if m.currentView != ListView {
+			m.generateAgendaJumpTargets()
+		} else {
+			// In list view, agenda jumping becomes list jumping
+			m.generateListJumpTargets()
+		}
 	}
 }
 
@@ -1007,20 +1024,23 @@ func (m *Model) handleJumpMode(key string) *Model {
 	// Check if key matches any jump target
 	for i, jumpKey := range m.jumpKeys {
 		if jumpKey == key {
-			// Handle different jump types
-			if m.currentView == ListView {
-				// Jump to list item
-				m.listView.JumpToIndex(i)
-			} else {
-				// Check if it's an agenda jump or calendar jump
-				if i < len(m.events) {
+			// Handle based on jump mode type
+			if m.jumpModeType == "calendar" {
+				if m.currentView == ListView {
+					// Jump to list item
+					m.listView.JumpToIndex(i)
+				} else if i < len(m.jumpTargets) {
+					// Jump to calendar date
+					m.selectedDate = m.jumpTargets[i]
+					m.loadEvents()
+				}
+			} else if m.jumpModeType == "agenda" {
+				if m.currentView == ListView {
+					// In list view, jump to list item
+					m.listView.JumpToIndex(i)
+				} else {
 					// Jump to agenda item
 					m.agendaView.JumpToIndex(i)
-				} else if i-len(m.events) < len(m.jumpTargets) {
-					// Jump to calendar date (offset by number of agenda items)
-					targetIdx := i - len(m.events)
-					m.selectedDate = m.jumpTargets[targetIdx]
-					m.loadEvents()
 				}
 			}
 			// Exit jump mode

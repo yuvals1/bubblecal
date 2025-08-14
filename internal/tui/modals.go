@@ -714,6 +714,8 @@ func (m *HelpModal) View() string {
 	}
 	helpText = append(helpText, "  ↑/↓       Navigate agenda")
 	helpText = append(helpText, "  hjkl      Navigate calendar")
+	helpText = append(helpText, "  f         Jump to calendar date")
+	helpText = append(helpText, "  F         Jump to agenda item")
 	helpText = append(helpText, "  t or .    Go to today (current hour in Week/Day)")
 	helpText = append(helpText, "")
 	
